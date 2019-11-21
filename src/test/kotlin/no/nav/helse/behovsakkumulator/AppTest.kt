@@ -47,8 +47,7 @@ internal class AppTest : CoroutineScope {
     private val serviceUser = ServiceUser("user", "password")
     private val environment = Environment(
         kafkaBootstrapServers = embeddedKafkaEnvironment.brokersURL,
-        spleisBehovtopic = testTopic,
-        fpsakBaseUrl = "http://fpsakBaseUrl.local"
+        spleisBehovtopic = testTopic
     )
     private val testKafkaProperties = loadBaseConfig(environment, serviceUser).apply {
         this[CommonClientConfigs.SECURITY_PROTOCOL_CONFIG] = "PLAINTEXT"
@@ -64,23 +63,11 @@ internal class AppTest : CoroutineScope {
         it.subscribe(listOf(testTopic))
     }
 
-    private val mockGenerator = mockk<ResponseGenerator>(relaxed = true).apply {
-        every { foreldrepenger() }.returns("[]")
-        every { svangerskapspenger() }.returns("[]")
-    }
-    private val mockHttpClient =  fpsakMockClient(mockGenerator)
-    private val mockStsRestClient = mockk<StsRestClient>().apply {
-        every { token() }.returns("token")
-    }
-
-    private val fpsakRestClient = FpsakRestClient("http://baseUrl.local", mockHttpClient, mockStsRestClient)
-
-    private val løsningService = LøsningService(fpsakRestClient)
 
     @BeforeAll
     fun setup() {
         embeddedKafkaEnvironment.start()
-        job = launchListeners(environment, serviceUser, løsningService, testKafkaProperties)
+        job = launchListeners(environment, serviceUser, testKafkaProperties)
     }
 
     @Test
@@ -96,8 +83,7 @@ internal class AppTest : CoroutineScope {
             .atMost(maxDelaySeconds, TimeUnit.SECONDS)
             .untilAsserted {
                 addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                assertEquals(Løsning(null, null), firstOrNull() { it.value().hasNonNull("@løsning") }
-                    ?.let { objectMapper.treeToValue<Løsning>(it.value()["@løsning"]) })
+
             }
     }
 
