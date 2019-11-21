@@ -1,4 +1,4 @@
-package no.nav.helse.grunnlagsdata
+package no.nav.helse.behovsakkumulator
 
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.client.HttpClient

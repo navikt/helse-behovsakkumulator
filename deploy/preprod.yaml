@@ -1,7 +1,7 @@
 apiVersion: nais.io/v1alpha1
 kind: Application
 metadata:
-  name: grunnlagsdata
+  name: behovsakkumulator
   namespace: default
   labels:
     team: {{team}}
@@ -32,7 +32,7 @@ spec:
     enabled: true
     paths:
       - mountPath: /var/run/secrets/nais.io/vault
-        kvPath: /serviceuser/data/dev/srvgrunnlagsdata
+        kvPath: /serviceuser/data/dev/srvbehovsakkumulat
   env:
     - name: KAFKA_BOOTSTRAP_SERVERS
       value: b27apvl00045.preprod.local:8443,b27apvl00046.preprod.local:8443,b27apvl00047.preprod.local:8443

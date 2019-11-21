@@ -1,4 +1,4 @@
-package no.nav.helse.grunnlagsdata
+package no.nav.helse.behovsakkumulator
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.kafka.common.serialization.Deserializer

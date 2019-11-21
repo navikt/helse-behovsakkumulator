@@ -1,7 +1,7 @@
 apiVersion: nais.io/v1alpha1
 kind: Alert
 metadata:
-  name: grunnlagsdata-alerts
+  name: behovsakkumulator-alerts
   labels:
     team: tbd
 spec:
@@ -9,10 +9,10 @@ spec:
     slack:
       channel: '#team-bømlo-alerts'
   alerts:
-    - alert: grunnlagsdata-har-ingen-aktive-pods
-      expr: up{app=~"grunnlagsdata",job="kubernetes-pods"} == 0
+    - alert: behovsakkumulator-har-ingen-aktive-pods
+      expr: up{app=~"behovsakkumulator",job="kubernetes-pods"} == 0
       for: 2m
-      description: grunnlagsdata mangler aktive pods i preprod!
+      description: behovsakkumulator mangler aktive pods i preprod!
       action: Se `kubectl describe pod {{ $labels.kubernetes_pod_name }}` for events,
         og `kubectl logs {{ $labels.kubernetes_pod_name }}` for logger
       sla: respond within 1h, during office hours

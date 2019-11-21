@@ -1,4 +1,4 @@
-package no.nav.helse.grunnlagsdata
+package no.nav.helse.behovsakkumulator
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -35,7 +35,7 @@ val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 val objectMapper: ObjectMapper = jacksonObjectMapper()
     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
     .registerModule(JavaTimeModule())
-val log = LoggerFactory.getLogger("grunnlagsdata")
+val log = LoggerFactory.getLogger("behovsakkumulator")
 
 fun main() = runBlocking {
     val serviceUser = readServiceUserCredentials()

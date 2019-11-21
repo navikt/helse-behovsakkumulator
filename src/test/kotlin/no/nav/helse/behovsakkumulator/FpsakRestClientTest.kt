@@ -1,4 +1,4 @@
-package no.nav.helse.grunnlagsdata
+package no.nav.helse.behovsakkumulator
 
 import io.mockk.every
 import io.mockk.mockk

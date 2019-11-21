@@ -15,7 +15,7 @@ jobs:
         java-version: '12.x'
     - name: create docker tag
       env:
-        DOCKER_IMAGE: docker.pkg.github.com/${{ github.repository }}/grunnlagsdata
+        DOCKER_IMAGE: docker.pkg.github.com/${{ github.repository }}/behovsakkumulator
       run: |
         echo $DOCKER_IMAGE > .docker_image
         echo $(echo $GITHUB_SHA | cut -c1-7) > .docker_tag

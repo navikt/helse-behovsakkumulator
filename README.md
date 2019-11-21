@@ -1,7 +1,7 @@
-# helse-grunnlagsdata
+# helse-behovsakkumulator
 
 ## Beskrivelse
-Grunnlagsdata plukker opp behov som deles opp i mindre biter som kan besvares i parallell.
+behovsakkumulator plukker opp behov som deles opp i mindre biter som kan besvares i parallell.
 Svarene på disse sys sammen og besvarer det opprinnelige behovet
 
 ## Kjøretidsavhengigheter
