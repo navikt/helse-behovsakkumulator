@@ -1,0 +1,19 @@
+apiVersion: nais.io/v1alpha1
+kind: Alert
+metadata:
+  name: sputnik-alerts
+  labels:
+    team: tbd
+spec:
+  receivers:
+    slack:
+      channel: '#team-bømlo-alerts'
+  alerts:
+    - alert: sputnik-har-ingen-aktive-pods
+      expr: up{app=~"sputnik",job="kubernetes-pods"} == 0
+      for: 2m
+      description: sputnik mangler aktive pods i produksjon!
+      action: Se `kubectl describe pod {{ $labels.kubernetes_pod_name }}` for events,
+        og `kubectl logs {{ $labels.kubernetes_pod_name }}` for logger
+      sla: respond within 1h, during office hours
+      severity: danger
