@@ -44,6 +44,8 @@ internal class AppTest : CoroutineScope {
         withSecurity = false
     )
 
+    private val akkumulator = Akkumulator()
+
     private val serviceUser = ServiceUser("user", "password")
     private val environment = Environment(
         kafkaBootstrapServers = embeddedKafkaEnvironment.brokersURL,
@@ -67,24 +69,23 @@ internal class AppTest : CoroutineScope {
     @BeforeAll
     fun setup() {
         embeddedKafkaEnvironment.start()
-        job = launchListeners(environment, serviceUser, testKafkaProperties)
+        job = launchListeners(environment, serviceUser, akkumulator, testKafkaProperties)
     }
 
     @Test
-    fun `skal motta behov og produsere løsning`() {
-        val behov = """{"@id": "behovsid", "@behov":"Ytelsesbehov", "aktørId":"123"}"""
-        behovProducer.send(ProducerRecord(testTopic, "123", objectMapper.readValue(behov)))
+    fun `skal lese et behov og legge det i minnet`() {
+        val behov1 =
+            """{"@id": "behovsid1", "aktørId":"aktørid1", "behov": ["Sykepengehistorikk", "AnsattINav", "AndreYtelser"]}"""
+        behovProducer.send(ProducerRecord(testTopic, "123", objectMapper.readValue(behov1)))
 
-        ventPåLøsning(5)
-    }
-
-    fun ventPåLøsning(maxDelaySeconds: Long) = mutableListOf<ConsumerRecord<String, JsonNode>>().apply {
-        await()
-            .atMost(maxDelaySeconds, TimeUnit.SECONDS)
-            .untilAsserted {
-                addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-
-            }
+        mutableListOf<ConsumerRecord<String, JsonNode>>().apply {
+            await()
+                .atMost(5, TimeUnit.SECONDS)
+                .untilAsserted {
+                    addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
+                    assertEquals(1, akkumulator.ubesvarteBehov())
+                }
+        }
     }
 
     @AfterAll

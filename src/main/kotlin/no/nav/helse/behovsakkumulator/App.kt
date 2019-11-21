@@ -6,11 +6,6 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.application.install
-import io.ktor.client.HttpClient
-import io.ktor.client.features.auth.Auth
-import io.ktor.client.features.auth.providers.basic
-import io.ktor.client.features.json.JacksonSerializer
-import io.ktor.client.features.json.JsonFeature
 import io.ktor.metrics.micrometer.MicrometerMetrics
 import io.ktor.routing.routing
 import io.ktor.server.engine.embeddedServer
@@ -25,7 +20,6 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.LoggerFactory
 import java.util.Properties
 import java.util.concurrent.Executors
@@ -64,7 +58,8 @@ fun launchApplication(
             }
         }.start(wait = false)
 
-        launchListeners(environment, serviceUser)
+        val akkumulator = Akkumulator()
+        launchListeners(environment, serviceUser, akkumulator)
 
         Runtime.getRuntime().addShutdownHook(Thread {
             server.stop(10, 10, TimeUnit.SECONDS)
@@ -76,15 +71,35 @@ fun launchApplication(
 fun CoroutineScope.launchListeners(
     environment: Environment,
     serviceUser: ServiceUser,
+    akkumulator: Akkumulator,
     baseConfig: Properties = loadBaseConfig(environment, serviceUser)
 ): Job {
     val behovProducer = KafkaProducer<String, JsonNode>(baseConfig.toProducerConfig())
 
     return listen<String, JsonNode>(environment.spleisBehovtopic, baseConfig.toConsumerConfig()) {
         val behov = it.value()
-        val behovId = behov["@id"]
-        if (behov["@behov"].asText() == "Ytelsesbehov" && !behov.hasNonNull("@løsning")) {
-
-        }
+        akkumulator.behandle(Behov(behov))
     }
+}
+
+class Akkumulator() {
+    private val pågåendeBehandlinger : MutableMap<String, MutableList<Behov>> = mutableMapOf()
+
+    fun ubesvarteBehov() = pågåendeBehandlinger.keys.size
+    fun behandle(behov: Behov) {
+        pågåendeBehandlinger[behov.id]
+            ?.let { pågåendeBehandlinger.put(behov.id, it.apply { add(behov) }) }
+            ?: pågåendeBehandlinger.put(behov.id, mutableListOf(behov))
+
+        // Finnes denne i mappet
+        // Er det en løsning?
+        //     -- har jeg løsningen allerede?
+        //     -- har jeg en komplett løsning
+
+    }
+}
+
+
+data class Behov(val jsonNode: JsonNode) {
+    val id: String = jsonNode["@id"].textValue()
 }
