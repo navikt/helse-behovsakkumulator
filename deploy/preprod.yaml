@@ -1,7 +1,7 @@
 apiVersion: nais.io/v1alpha1
 kind: Application
 metadata:
-  name: sputnik
+  name: grunnlagsdata
   namespace: default
   labels:
     team: {{team}}
@@ -32,9 +32,7 @@ spec:
     enabled: true
     paths:
       - mountPath: /var/run/secrets/nais.io/vault
-        kvPath: /serviceuser/data/dev/srvsputnik
+        kvPath: /serviceuser/data/dev/srvgrunnlagsdata
   env:
     - name: KAFKA_BOOTSTRAP_SERVERS
       value: b27apvl00045.preprod.local:8443,b27apvl00046.preprod.local:8443,b27apvl00047.preprod.local:8443
-    - name: FPSAK_BASE_URL
-      value: https://fpsak-q1.nais.preprod.local

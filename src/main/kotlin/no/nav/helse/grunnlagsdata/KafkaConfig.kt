@@ -1,4 +1,4 @@
-package no.nav.helse.sputnik
+package no.nav.helse.grunnlagsdata
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -42,7 +42,7 @@ fun loadBaseConfig(env: Environment, serviceUser: ServiceUser): Properties = Pro
 
 fun Properties.toConsumerConfig(): Properties = Properties().also {
     it.putAll(this)
-    it[ConsumerConfig.GROUP_ID_CONFIG] = "sputnik-consumer"
+    it[ConsumerConfig.GROUP_ID_CONFIG] = "grunnlagsdata-consumer"
     it[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
     it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = JacksonKafkaDeserializer::class.java
     it[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
@@ -50,7 +50,7 @@ fun Properties.toConsumerConfig(): Properties = Properties().also {
 
 fun Properties.toProducerConfig(): Properties = Properties().also {
     it.putAll(this)
-    it[ConsumerConfig.GROUP_ID_CONFIG] = "sputnik-producer"
+    it[ConsumerConfig.GROUP_ID_CONFIG] = "grunnlagsdata-producer"
     it[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
     it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = JacksonKafkaSerializer::class.java
 }

@@ -1,4 +1,4 @@
-package no.nav.helse.sputnik
+package no.nav.helse.grunnlagsdata
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine

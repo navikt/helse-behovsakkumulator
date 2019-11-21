@@ -1,4 +1,4 @@
-package no.nav.helse.sputnik
+package no.nav.helse.grunnlagsdata
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.kafka.common.serialization.Deserializer

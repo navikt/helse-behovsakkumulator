@@ -1,4 +1,4 @@
-package no.nav.helse.sputnik
+package no.nav.helse.grunnlagsdata
 
 import java.nio.file.Files
 import java.nio.file.Path

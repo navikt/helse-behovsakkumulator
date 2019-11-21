@@ -1,4 +1,4 @@
-package no.nav.helse.sputnik
+package no.nav.helse.grunnlagsdata
 
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.client.HttpClient

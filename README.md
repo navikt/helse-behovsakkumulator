@@ -1,7 +1,8 @@
-# helse-sputnik
+# helse-grunnlagsdata
 
 ## Beskrivelse
-Sputnik aggregerer og persisterer informasjon fra eksterne systemer for å løse behov fra spleis.
+Grunnlagsdata plukker opp behov som deles opp i mindre biter som kan besvares i parallell.
+Svarene på disse sys sammen og besvarer det opprinnelige behovet
 
 ## Kjøretidsavhengigheter
 
