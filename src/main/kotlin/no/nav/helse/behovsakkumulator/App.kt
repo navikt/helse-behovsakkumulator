@@ -3,6 +3,7 @@ package no.nav.helse.behovsakkumulator
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.application.install
@@ -20,6 +21,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.LoggerFactory
 import java.util.Properties
 import java.util.concurrent.Executors
@@ -77,29 +79,22 @@ fun CoroutineScope.launchListeners(
     val behovProducer = KafkaProducer<String, JsonNode>(baseConfig.toProducerConfig())
 
     return listen<String, JsonNode>(environment.spleisBehovtopic, baseConfig.toConsumerConfig()) {
-        val behov = it.value()
-        akkumulator.behandle(Behov(behov))
-    }
-}
-
-class Akkumulator() {
-    private val pågåendeBehandlinger : MutableMap<String, MutableList<Behov>> = mutableMapOf()
-
-    fun ubesvarteBehov() = pågåendeBehandlinger.keys.size
-    fun behandle(behov: Behov) {
-        pågåendeBehandlinger[behov.id]
-            ?.let { pågåendeBehandlinger.put(behov.id, it.apply { add(behov) }) }
-            ?: pågåendeBehandlinger.put(behov.id, mutableListOf(behov))
-
-        // Finnes denne i mappet
-        // Er det en løsning?
-        //     -- har jeg løsningen allerede?
-        //     -- har jeg en komplett løsning
-
+        // TODO: Filtrer ut behov som ikke skal behandles
+        val behov = Behov(it.value())
+        akkumulator.behandle(behov)
+        akkumulator.løsning(behov.id)
+            ?.let { løsning -> behovProducer.send(ProducerRecord<String, JsonNode>(environment.spleisBehovtopic, løsning.jsonNode)) }
     }
 }
 
 
-data class Behov(val jsonNode: JsonNode) {
+data class Behov(var jsonNode: JsonNode) {
     val id: String = jsonNode["@id"].textValue()
+    val behov: Set<String> = jsonNode["behov"].map { it.textValue() }.toSet()
+    val løsning: MutableMap<String, Any>? = jsonNode["@løsning"]?.let { objectMapper.convertValue(it, mutableMapOf<String, Any>().javaClass) }
+
+    fun erKomplett() = behov.all { løsning?.containsKey(it) ?: false }
+    fun oppdaterJsonNode() {
+        (jsonNode as ObjectNode).replace("@løsning", objectMapper.valueToTree(løsning))
+    }
 }
