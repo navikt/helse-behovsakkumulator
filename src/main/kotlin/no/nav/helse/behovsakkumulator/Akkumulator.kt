@@ -12,6 +12,7 @@ class Akkumulator {
 
     fun løsning(behovId: String) : Behov?{
         val muligKomplettLøsning = pågåendeBehandlinger[behovId]
+            ?.copy()
             .takeIf { it?.delløsninger?.isNotEmpty() ?: false}
             ?.delløsninger?.reduce { acc, behov ->
                 val løsning = behov.løsning?.entries?.first() ?: error("Fant løsning uten innhold")
