@@ -25,6 +25,7 @@ dependencies {
     implementation("io.micrometer:micrometer-registry-prometheus:1.1.6")
 
     implementation("org.apache.kafka:kafka-clients:2.3.0")
+    implementation("org.apache.kafka:kafka-streams:2.3.0")
 
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.10")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.9.10")

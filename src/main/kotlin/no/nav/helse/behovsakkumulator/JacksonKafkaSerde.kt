@@ -2,6 +2,7 @@ package no.nav.helse.behovsakkumulator
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.kafka.common.serialization.Deserializer
+import org.apache.kafka.common.serialization.Serde
 import org.apache.kafka.common.serialization.Serializer
 
 class JacksonKafkaSerializer : Serializer<JsonNode> {
@@ -10,4 +11,9 @@ class JacksonKafkaSerializer : Serializer<JsonNode> {
 
 class JacksonKafkaDeserializer: Deserializer<JsonNode> {
     override fun deserialize(topic: String?, data: ByteArray): JsonNode = objectMapper.readTree(data)
+}
+
+class JacksonKafkaSerde : Serde<JsonNode> {
+    override fun deserializer(): Deserializer<JsonNode> = JacksonKafkaDeserializer()
+    override fun serializer(): Serializer<JsonNode> = JacksonKafkaSerializer()
 }

@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.treeToValue
 import io.ktor.application.install
+import io.ktor.client.features.json.JacksonSerializer
 import io.ktor.metrics.micrometer.MicrometerMetrics
 import io.ktor.routing.routing
 import io.ktor.server.engine.embeddedServer
@@ -20,8 +22,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
+import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.serialization.Serdes
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.kafka.streams.KafkaStreams
+import org.apache.kafka.streams.StreamsBuilder
+import org.apache.kafka.streams.kstream.Consumed
+import org.apache.kafka.streams.kstream.Produced
 import org.slf4j.LoggerFactory
 import java.util.Properties
 import java.util.concurrent.Executors
@@ -60,41 +69,61 @@ fun launchApplication(
             }
         }.start(wait = false)
 
-        val akkumulator = Akkumulator()
-        launchListeners(environment, serviceUser, akkumulator)
+        val stream = createStream(environment, serviceUser)
+        stream.start()
 
         Runtime.getRuntime().addShutdownHook(Thread {
             server.stop(10, 10, TimeUnit.SECONDS)
+            stream.close()
             applicationContext.close()
         })
     }
 }
 
-fun CoroutineScope.launchListeners(
+fun createStream(
     environment: Environment,
     serviceUser: ServiceUser,
-    akkumulator: Akkumulator,
     baseConfig: Properties = loadBaseConfig(environment, serviceUser)
-): Job {
-    val behovProducer = KafkaProducer<String, JsonNode>(baseConfig.toProducerConfig())
+) : KafkaStreams {
+    val builder = StreamsBuilder()
+    builder
+        .stream<String, JsonNode>(environment.spleisBehovtopic, Consumed.with(Serdes.StringSerde(), JacksonKafkaSerde()))
+        .filter { _, value -> value.hasNonNull("@løsning") }
+        .filterNot { _, value -> value["final"]?.asBoolean() == true }
+        .peek { key, value ->
+            log.info("Mottok {} for behov med {}",
+                keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
+                keyValue("id", key)
+            )
+        }
+        .groupByKey()
+        .reduce { behov1, behov2 ->
+            val result = behov1.deepCopy<ObjectNode>()
+            val løsning = result["@løsning"] as ObjectNode
+            behov2["@løsning"].fields().forEach { (key, value) ->
+                løsning.set(key, value)
+            }
+            result
+        }
+        .toStream()
+        .peek { key, value ->
+            log.info("Satt sammen {} for behov med id {}. Forventer {}",
+                keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
+                keyValue("id", key),
+                keyValue("behov", value["behov"].asSequence().map(JsonNode::asText).joinToString(", "))
+            )
+        }
+        .filter { _, value ->
+            val løsninger = objectMapper.treeToValue<Map<String, JsonNode>>(value["@løsning"])
+            val behov = objectMapper.treeToValue<List<String>>(value["behov"])
 
-    return listen<String, JsonNode>(environment.spleisBehovtopic, baseConfig.toConsumerConfig()) {
-        // TODO: Filtrer ut behov som ikke skal behandles
-        val behov = Behov(it.value())
-        akkumulator.behandle(behov)
-        akkumulator.løsning(behov.id)
-            ?.let { løsning -> behovProducer.send(ProducerRecord<String, JsonNode>(environment.spleisBehovtopic, løsning.jsonNode)) }
-    }
-}
+            behov.all(løsninger::containsKey)
+        }
+        .mapValues { value: JsonNode ->
+            (value as ObjectNode).put("final", true) as JsonNode
+        }
+        .peek{ key, _ -> log.info("Markert behov med {} som final", keyValue("id", key)) }
+        .to(environment.spleisBehovtopic, Produced.with(Serdes.StringSerde(), JacksonKafkaSerde()))
 
-
-data class Behov(var jsonNode: JsonNode) {
-    val id: String = jsonNode["@id"].textValue()
-    val behov: Set<String> = jsonNode["behov"].map { it.textValue() }.toSet()
-    val løsning: MutableMap<String, Any>? = jsonNode["@løsning"]?.let { objectMapper.convertValue(it, mutableMapOf<String, Any>().javaClass) }
-
-    fun erKomplett() = behov.all { løsning?.containsKey(it) ?: false }
-    fun oppdaterJsonNode() {
-        (jsonNode as ObjectNode).replace("@løsning", objectMapper.valueToTree(løsning))
-    }
+    return KafkaStreams(builder.build(), baseConfig.toStreamsConfig())
 }
