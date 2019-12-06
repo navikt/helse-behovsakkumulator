@@ -1,38 +1,13 @@
 package no.nav.helse.behovsakkumulator
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.apache.kafka.streams.StreamsConfig
-import java.time.Duration
 import java.util.Properties
 
 
-fun <K, V> CoroutineScope.listen(
-    topic: String,
-    consumerConfig: Properties,
-    delayMs: Long = 100,
-    onMessage: (ConsumerRecord<K, V>) -> Unit
-) = launch {
-    val consumer = KafkaConsumer<K, V>(consumerConfig).also {
-        it.subscribe(listOf(topic))
-    }
-    while (isActive) {
-        val records = consumer.poll(Duration.ofMillis(0))
-        if (records.isEmpty) {
-            delay(delayMs)
-        }
-
-        records.forEach { onMessage(it) }
-    }
-}
 
 fun loadBaseConfig(env: Environment, serviceUser: ServiceUser): Properties = Properties().also {
     it.load(Environment::class.java.getResourceAsStream("/kafka_base.properties"))
