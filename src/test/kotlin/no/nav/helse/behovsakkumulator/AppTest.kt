@@ -1,6 +1,7 @@
 package no.nav.helse.behovsakkumulator
 
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.node.ObjectNode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import no.nav.common.KafkaEnvironment
@@ -78,6 +79,29 @@ internal class AppTest : CoroutineScope {
             it[StreamsConfig.STATE_DIR_CONFIG] = kafkaStreamsStateDir.toAbsolutePath().toString()
         })
         stream.start()
+    }
+
+    @Test
+    fun `frittstående svar blir markert final`() {
+        val behov1 = objectMapper.readTree("""{"@id": "behovsid1", "aktørId": "aktørid1", "behov": ["AndreYtelser"]}""")
+        val løsning1 = behov1.leggTilLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
+        behovProducer.send(ProducerRecord(testTopic, "behovsid1", behov1))
+        behovProducer.send(ProducerRecord(testTopic, "behovsid1", løsning1))
+
+        mutableListOf<ConsumerRecord<String, JsonNode>>().also { records ->
+            await()
+                .atMost(10, TimeUnit.SECONDS)
+                .untilAsserted {
+                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
+                    val finalRecords = records.map { it.value() }.filter { it["final"]?.asBoolean() ?: false }
+                    assertEquals(1, finalRecords.size)
+                    val løsninger = finalRecords.first()["@løsning"].fields().asSequence().toList()
+                    val løsningTyper = løsninger.map { it.key }
+                    assertTrue(løsningTyper.containsAll(listOf("AndreYtelser")))
+                    assertEquals(1,løsningTyper.size)
+                }
+        }
+        behovConsumer.poll(Duration.ofMillis(1000))
     }
 
     @Test
@@ -184,6 +208,9 @@ internal class AppTest : CoroutineScope {
                 }
         }
     }*/
+
+    fun JsonNode.leggTilLøsning(løsning: String) =
+        (this as ObjectNode).set("@løsning", objectMapper.readTree(løsning) ) as JsonNode
 
     @AfterAll
     fun tearDown() {
