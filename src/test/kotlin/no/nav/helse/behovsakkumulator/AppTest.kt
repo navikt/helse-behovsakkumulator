@@ -83,10 +83,10 @@ internal class AppTest : CoroutineScope {
 
     @Test
     fun `frittstående svar blir markert final`() {
-        val behov1 = objectMapper.readTree("""{"@id": "behovsid1", "aktørId": "aktørid1", "behov": ["AndreYtelser"]}""")
-        val løsning1 = behov1.leggTilLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
-        behovProducer.send(ProducerRecord(testTopic, "behovsid1", behov1))
-        behovProducer.send(ProducerRecord(testTopic, "behovsid1", løsning1))
+        val behov4 = objectMapper.readTree("""{"@id": "behovsid4", "aktørId": "aktørid1", "behov": ["AndreYtelser"]}""")
+        val løsning4 = behov4.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
+        behovProducer.send(ProducerRecord(testTopic, "behovsid4", behov4))
+        behovProducer.send(ProducerRecord(testTopic, "behovsid4", løsning4))
 
         mutableListOf<ConsumerRecord<String, JsonNode>>().also { records ->
             await()
@@ -108,12 +108,9 @@ internal class AppTest : CoroutineScope {
     fun `fler delsvar blir kombinert til et komplett svar`() {
         val behov1 =
             objectMapper.readTree("""{"@id": "behovsid1", "aktørId": "aktørid1", "behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"]}""")
-        val løsning1 =
-            objectMapper.readTree("""{"@id": "behovsid1", "aktørId": "aktørid1", "behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"], "@løsning": { "Sykepengehistorikk": [] } }""")
-        val løsning2 =
-            objectMapper.readTree("""{"@id": "behovsid1", "aktørId": "aktørid1", "behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"], "@løsning": { "AndreYtelser": { "felt1": null, "felt2": {}} } }""")
-        val løsning3 =
-            objectMapper.readTree("""{"@id": "behovsid1", "aktørId": "aktørid1", "behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"], "@løsning": { "Foreldrepenger": {} }}""")
+        val løsning1 = behov1.medLøsning("""{ "Sykepengehistorikk": [] }""")
+        val løsning2 = behov1.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
+        val løsning3 = behov1.medLøsning("""{ "Foreldrepenger": {} }""")
         behovProducer.send(ProducerRecord(testTopic, "behovsid1", behov1))
         behovProducer.send(ProducerRecord(testTopic, "behovsid1", løsning1))
         behovProducer.send(ProducerRecord(testTopic, "behovsid1", løsning2))
@@ -138,18 +135,14 @@ internal class AppTest : CoroutineScope {
     fun `løser behov #3 uavhengig av om behov #2 er ferdigstilt`() {
         val behov2 =
             objectMapper.readTree("""{"@id": "behovsid2", "aktørId": "aktørid1", "behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"]}""")
-        val løsning1ForBehov2 =
-            objectMapper.readTree("""{"@id": "behovsid2", "aktørId": "aktørid1", "behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"], "@løsning": { "Sykepengehistorikk": [] } }""")
-        val løsning2ForBehov2 =
-            objectMapper.readTree("""{"@id": "behovsid2", "aktørId": "aktørid1", "behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"], "@løsning": { "AndreYtelser": { "felt1": null, "felt2": {}} } }""")
+        val løsning1ForBehov2 = behov2.medLøsning("""{ "Sykepengehistorikk": [] }""")
+        val løsning2ForBehov2 = behov2.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
+
         val behov3 =
             objectMapper.readTree("""{"@id": "behovsid3", "aktørId": "aktørid1", "behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"]}""")
-        val løsning1ForBehov3 =
-            objectMapper.readTree("""{"@id": "behovsid3", "aktørId": "aktørid1", "behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"], "@løsning": { "Sykepengehistorikk": [] } }""")
-        val løsning2ForBehov3 =
-            objectMapper.readTree("""{"@id": "behovsid3", "aktørId": "aktørid1", "behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"], "@løsning": { "AndreYtelser": { "felt1": null, "felt2": {}} } }""")
-        val løsning3ForBehov3 =
-            objectMapper.readTree("""{"@id": "behovsid3", "aktørId": "aktørid1", "behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"], "@løsning": { "Foreldrepenger": {} }}""")
+        val løsning1ForBehov3 = behov3.medLøsning("""{ "Sykepengehistorikk": [] }""")
+        val løsning2ForBehov3 = behov3.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
+        val løsning3ForBehov3 = behov3.medLøsning("""{ "Foreldrepenger": {} }""")
         behovProducer.send(ProducerRecord(testTopic, "behovsid2", behov2))
         behovProducer.send(ProducerRecord(testTopic, "behovsid3", behov3))
         behovProducer.send(ProducerRecord(testTopic, "behovsid2", løsning1ForBehov2))
@@ -209,8 +202,8 @@ internal class AppTest : CoroutineScope {
         }
     }*/
 
-    fun JsonNode.leggTilLøsning(løsning: String) =
-        (this as ObjectNode).set("@løsning", objectMapper.readTree(løsning) ) as JsonNode
+    fun JsonNode.medLøsning(løsning: String) =
+        (this.deepCopy() as ObjectNode).set("@løsning", objectMapper.readTree(løsning) ) as JsonNode
 
     @AfterAll
     fun tearDown() {
