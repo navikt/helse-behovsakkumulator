@@ -8,3 +8,4 @@ Svarene på disse sys sammen og besvarer det opprinnelige behovet
 
 * JDK 12
 * Kafka
+
