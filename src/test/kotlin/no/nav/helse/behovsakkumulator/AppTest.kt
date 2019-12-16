@@ -83,10 +83,10 @@ internal class AppTest : CoroutineScope {
 
     @Test
     fun `frittstående svar blir markert final`() {
-        val behov4 = objectMapper.readTree("""{"@id": "behovsid4", "aktørId": "aktørid1", "behov": ["AndreYtelser"]}""")
+        val behov4 = objectMapper.readTree("""{"@id": "behovsid5", "aktørId": "aktørid1", "behov": ["AndreYtelser"]}""")
         val løsning4 = behov4.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
-        behovProducer.send(ProducerRecord(testTopic, "behovsid4", behov4))
-        behovProducer.send(ProducerRecord(testTopic, "behovsid4", løsning4))
+        behovProducer.send(ProducerRecord(testTopic, "behovsid5", behov4))
+        behovProducer.send(ProducerRecord(testTopic, "behovsid5", løsning4))
 
         mutableListOf<ConsumerRecord<String, JsonNode>>().also { records ->
             await()
@@ -167,8 +167,8 @@ internal class AppTest : CoroutineScope {
         }
     }
 
-    /*@Test
-    fun `bruker sist ankomne svar i tilfelle duplikatsvar`() {
+    @Test
+    fun `produserer en ny final ved ny løsning på et behov som tidligere har blitt løst`() {
         val behov4 =
             objectMapper.readTree("""{"@id": "behovsid4", "aktørId": "aktørid1", "behov": ["Sykepengehistorikk", "AndreYtelser"]}""")
         val løsning1ForBehov4 =
@@ -178,29 +178,70 @@ internal class AppTest : CoroutineScope {
         val duplikatløsning2ForBehov4 =
             objectMapper.readTree("""{"@id": "behovsid4", "aktørId": "aktørid1", "behov": ["Sykepengehistorikk", "AndreYtelser"], "@løsning": { "AndreYtelser": { "felt1": "andre verdi"} } }""")
 
-        behovProducer.send(ProducerRecord(testTopic, "behovsid4", behov4))
-        behovProducer.send(ProducerRecord(testTopic, "behovsid4", løsning1ForBehov4))
-        behovProducer.send(ProducerRecord(testTopic, "behovsid4", løsning2ForBehov4))
-
-        Thread.sleep(10000)
-        behovProducer.send(ProducerRecord(testTopic, "behovsid4", duplikatløsning2ForBehov4))
-
-        Thread.sleep(10000)
+        behovProducer.send(ProducerRecord(testTopic, "behovsid4", behov4)).get()
+        behovProducer.send(ProducerRecord(testTopic, "behovsid4", løsning1ForBehov4)).get()
+        behovProducer.send(ProducerRecord(testTopic, "behovsid4", løsning2ForBehov4)).get()
 
         mutableListOf<ConsumerRecord<String, JsonNode>>().also { records ->
             await()
-                .atMost(10, TimeUnit.SECONDS)
+                .atMost(15, TimeUnit.SECONDS)
                 .untilAsserted {
                     records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
                     val finalRecords = records.map { it.value() }.filter { it["final"]?.asBoolean() ?: false }
                     assertEquals(1, finalRecords.size)
                     val record = finalRecords.first()
-                    val løsninger = record["@løsning"].fields().asSequence().toList()
+                    assertEquals("første verdi", record["@løsning"]["AndreYtelser"]["felt1"].asText())
+                }
+        }
 
+        behovProducer.send(ProducerRecord(testTopic, "behovsid4", duplikatløsning2ForBehov4)).get()
+
+        mutableListOf<ConsumerRecord<String, JsonNode>>().also { records ->
+            await()
+                .atMost(15, TimeUnit.SECONDS)
+                .untilAsserted {
+                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
+                    val finalRecords = records.map { it.value() }.filter { it["final"]?.asBoolean() ?: false }
+                    assertEquals(1, finalRecords.size)
+                    val record = finalRecords.first()
                     assertEquals("andre verdi", record["@løsning"]["AndreYtelser"]["felt1"].asText())
                 }
         }
-    }*/
+    }
+
+    @Test
+    fun `bruker sist ankomne svar i tilfelle duplikatsvar`() {
+        val behovsid = "behovsid6"
+        val behov = "[\"Sykepengehistorikk\", \"AndreYtelser\", \"Foreldrepenger\"]"
+        val behov6 =
+            objectMapper.readTree("""{"@id": "$behovsid", "aktørId": "aktørid1", "behov": $behov}""")
+        val løsning1ForBehov6 =
+            objectMapper.readTree("""{"@id": "$behovsid", "aktørId": "aktørid1", "behov": $behov, "@løsning": { "Sykepengehistorikk": { "felt2": "første løsning" } } }""")
+        val løsning2ForBehov6 =
+            objectMapper.readTree("""{"@id": "$behovsid", "aktørId": "aktørid1", "behov": $behov, "@løsning": { "AndreYtelser": { "felt1": "første verdi" } } }""")
+        val duplikatløsning2ForBehov6 =
+            objectMapper.readTree("""{"@id": "$behovsid", "aktørId": "aktørid1", "behov": $behov, "@løsning": { "Sykepengehistorikk": { "felt2": "andre løsning" } } }""")
+        val finalLøsning =
+            objectMapper.readTree("""{"@id": "$behovsid", "aktørId": "aktørid1", "behov": $behov, "@løsning": { "Foreldrepenger": [] } }""")
+
+        behovProducer.send(ProducerRecord(testTopic, behovsid, behov6)).get()
+        behovProducer.send(ProducerRecord(testTopic, behovsid, løsning1ForBehov6)).get()
+        behovProducer.send(ProducerRecord(testTopic, behovsid, løsning2ForBehov6)).get()
+        behovProducer.send(ProducerRecord(testTopic, behovsid, duplikatløsning2ForBehov6)).get()
+        behovProducer.send(ProducerRecord(testTopic, behovsid, finalLøsning)).get()
+
+        mutableListOf<ConsumerRecord<String, JsonNode>>().also { records ->
+            await()
+                .atMost(15, TimeUnit.SECONDS)
+                .untilAsserted {
+                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
+                    val finalRecords = records.map { it.value() }.filter { it["final"]?.asBoolean() ?: false }
+                    assertEquals(1, finalRecords.size)
+                    val record = finalRecords.first()
+                    assertEquals("andre løsning", record["@løsning"]["Sykepengehistorikk"]["felt2"].asText())
+                }
+        }
+    }
 
     fun JsonNode.medLøsning(løsning: String) =
         (this.deepCopy() as ObjectNode).set("@løsning", objectMapper.readTree(løsning) ) as JsonNode
