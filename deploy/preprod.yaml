@@ -32,6 +32,8 @@ spec:
     enabled: true
     paths:
       - mountPath: /var/run/secrets/nais.io/vault
+        kvPath: /kv/dev/fss/behovsakkumulator/default
+      - mountPath: /var/run/secrets/nais.io/serviceuser
         kvPath: /serviceuser/data/dev/srvbehovsakkumulat
   env:
     - name: KAFKA_BOOTSTRAP_SERVERS
