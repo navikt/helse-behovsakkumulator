@@ -64,7 +64,8 @@ fun launchApplication(
 
             routing {
                 registerHealthApi(
-                    liveness = { stream.state().isRunning },
+                    liveness = { true },
+                    //liveness = { stream.state().isRunning },
                     readiness = { true },
                     meterRegistry = meterRegistry
                 )
