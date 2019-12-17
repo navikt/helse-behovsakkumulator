@@ -18,17 +18,17 @@ fun Routing.registerHealthApi(
 ) {
     get("/is_alive") {
         if (liveness()) {
-            call.respondText("гудок")
+            call.respondText("I'm alive")
         } else {
-            call.respondText("я покойник", status = HttpStatusCode.InternalServerError)
+            call.respondText("I'm dead", status = HttpStatusCode.InternalServerError)
         }
     }
 
     get("/is_ready") {
         if (readiness()) {
-            call.respondText("гудок")
+            call.respondText("I'm ready")
         } else {
-            call.respondText("возможно подождать", status = HttpStatusCode.InternalServerError)
+            call.respondText("Please wait", status = HttpStatusCode.InternalServerError)
         }
     }
 

@@ -54,18 +54,22 @@ fun launchApplication(
         context.cancel(CancellationException("Feil i lytter", e))
     }
     runBlocking(exceptionHandler + applicationContext) {
+        val stream = createStream(environment, serviceUser)
+        stream.start()
+
         val server = embeddedServer(Netty, 8080) {
             install(MicrometerMetrics) {
                 registry = meterRegistry
             }
 
             routing {
-                registerHealthApi({ true }, { true }, meterRegistry)
+                registerHealthApi(
+                    liveness = { stream.state().isRunning },
+                    readiness = { true },
+                    meterRegistry = meterRegistry
+                )
             }
         }.start(wait = false)
-
-        val stream = createStream(environment, serviceUser)
-        stream.start()
 
         Runtime.getRuntime().addShutdownHook(Thread {
             server.stop(10, 10, TimeUnit.SECONDS)
@@ -91,7 +95,12 @@ fun createStream(
         .bareKomplettLøsningPåBehov()
         .markerBehovFerdig()
         .to(environment.spleisBehovtopic, Produced.with(Serdes.StringSerde(), JacksonKafkaSerde()))
-    return KafkaStreams(builder.build(), baseConfig.toStreamsConfig())
+    return KafkaStreams(builder.build(), baseConfig.toStreamsConfig()).apply {
+        setUncaughtExceptionHandler { _, err ->
+            log.error("Caught exception in stream: ${err.message}", err)
+            close()
+        }
+    }
 }
 
 private fun KStream<String, JsonNode>.markerBehovFerdig(): KStream<String, JsonNode> =
@@ -107,7 +116,7 @@ private fun KStream<String, JsonNode>.kombinerDelløsningerPåBehov(): KStream<S
                 "Satt sammen {} for behov med id {}. Forventer {}",
                 keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
                 keyValue("id", key),
-                keyValue("behov", value["behov"].asSequence().map(JsonNode::asText).joinToString(", "))
+                keyValue("behov", value["@behov"].asSequence().map(JsonNode::asText).joinToString(", "))
             )
         }
 
@@ -115,7 +124,7 @@ private fun KStream<String, JsonNode>.kombinerDelløsningerPåBehov(): KStream<S
 private fun KStream<String, JsonNode>.bareKomplettLøsningPåBehov(): KStream<String, JsonNode> =
     this.filter { _, value ->
         val løsninger = objectMapper.treeToValue<Map<String, JsonNode>>(value["@løsning"])
-        val behov = objectMapper.treeToValue<List<String>>(value["behov"])
+        val behov = objectMapper.treeToValue<List<String>>(value["@behov"])
         behov.all(løsninger::containsKey)
     }
 
@@ -134,7 +143,7 @@ private fun slåSammenLøsninger(behov1: JsonNode, behov2: JsonNode): ObjectNode
     val result = behov1.deepCopy<ObjectNode>()
     val løsning = result["@løsning"] as ObjectNode
     behov2["@løsning"].fields().forEach { (key, value) ->
-        løsning.set(key, value)
+        løsning.set<ObjectNode>(key, value)
     }
     return result
 }

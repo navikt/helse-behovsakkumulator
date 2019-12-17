@@ -27,12 +27,12 @@ dependencies {
     implementation("org.apache.kafka:kafka-clients:2.3.0")
     implementation("org.apache.kafka:kafka-streams:2.3.0")
 
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.10")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.9.10")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.10.1")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.10.1")
 
     implementation("org.slf4j:slf4j-api:1.7.29")
     implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("net.logstash.logback:logstash-logback-encoder:6.2")
+    implementation("net.logstash.logback:logstash-logback-encoder:6.3")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")
