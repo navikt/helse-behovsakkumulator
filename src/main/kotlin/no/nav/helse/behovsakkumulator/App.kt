@@ -37,6 +37,8 @@ val objectMapper: ObjectMapper = jacksonObjectMapper()
     .registerModule(JavaTimeModule())
 val log = LoggerFactory.getLogger("behovsakkumulator")
 
+data class ApplicationState(var ready: Boolean = false, var alive: Boolean = true)
+
 fun main() = runBlocking {
     val serviceUser = readServiceUserCredentials()
     val environment = setUpEnvironment()
@@ -48,15 +50,13 @@ fun launchApplication(
     environment: Environment,
     serviceUser: ServiceUser
 ) {
+    val applicationState = ApplicationState()
     val applicationContext = Executors.newFixedThreadPool(4).asCoroutineDispatcher()
     val exceptionHandler = CoroutineExceptionHandler { context, e ->
         log.error("Feil i lytter", e)
         context.cancel(CancellationException("Feil i lytter", e))
     }
     runBlocking(exceptionHandler + applicationContext) {
-        val stream = createStream(environment, serviceUser)
-        stream.start()
-
         val server = embeddedServer(Netty, 8080) {
             install(MicrometerMetrics) {
                 registry = meterRegistry
@@ -64,13 +64,20 @@ fun launchApplication(
 
             routing {
                 registerHealthApi(
-                    liveness = { true },
-                    //liveness = { stream.state().isRunning },
-                    readiness = { true },
+                    liveness = { applicationState.alive },
+                    readiness = { applicationState.ready },
                     meterRegistry = meterRegistry
                 )
             }
         }.start(wait = false)
+
+        val stream = createStream(environment, serviceUser)
+
+        stream.setStateListener { newState, _ ->
+            applicationState.ready = newState.isRunning
+            applicationState.alive = newState != KafkaStreams.State.NOT_RUNNING
+        }
+        stream.start()
 
         Runtime.getRuntime().addShutdownHook(Thread {
             server.stop(10, 10, TimeUnit.SECONDS)
