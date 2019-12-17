@@ -77,6 +77,8 @@ internal class AppTest : CoroutineScope {
         embeddedKafkaEnvironment.start()
         stream = createStream(environment, serviceUser, testKafkaProperties.also {
             it[StreamsConfig.STATE_DIR_CONFIG] = kafkaStreamsStateDir.toAbsolutePath().toString()
+            // Since the message might be produced before the stream is started we use the earliest offset for testing
+            it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "earliest"
         })
         stream.start()
     }
