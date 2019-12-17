@@ -90,6 +90,7 @@ fun createStream(
             environment.spleisBehovtopic,
             Consumed.with(Serdes.StringSerde(), JacksonKafkaSerde())
         )
+        .filter { _, value -> value["@behov"]?.isArray == true }
         .alleBehovSomIkkeErMarkertFerdig()
         .kombinerDelløsningerPåBehov()
         .bareKomplettLøsningPåBehov()
