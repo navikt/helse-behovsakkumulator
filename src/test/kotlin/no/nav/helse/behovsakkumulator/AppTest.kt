@@ -95,7 +95,9 @@ internal class AppTest : CoroutineScope {
                 .atMost(10, TimeUnit.SECONDS)
                 .untilAsserted {
                     records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    val finalRecords = records.map { it.value() }.filter { it["final"]?.asBoolean() ?: false }
+                    val finalRecords = records.map { it.value() }
+                        .filter { it["@final"]?.asBoolean() ?: false }
+                        .filter { it.hasNonNull("@besvart") }
                     assertEquals(1, finalRecords.size)
                     val løsninger = finalRecords.first()["@løsning"].fields().asSequence().toList()
                     val løsningTyper = løsninger.map { it.key }
@@ -123,7 +125,9 @@ internal class AppTest : CoroutineScope {
                 .atMost(10, TimeUnit.SECONDS)
                 .untilAsserted {
                     records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    val finalRecords = records.map { it.value() }.filter { it["final"]?.asBoolean() ?: false }
+                    val finalRecords = records.map { it.value() }
+                        .filter { it["@final"]?.asBoolean() ?: false }
+                        .filter { it.hasNonNull("@besvart") }
                     assertEquals(1, finalRecords.size)
                     val løsninger = finalRecords.first()["@løsning"].fields().asSequence().toList()
                     val løsningTyper = løsninger.map { it.key }
@@ -158,7 +162,9 @@ internal class AppTest : CoroutineScope {
                 .atMost(10, TimeUnit.SECONDS)
                 .untilAsserted {
                     records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    val finalRecords = records.map { it.value() }.filter { it["final"]?.asBoolean() ?: false }
+                    val finalRecords = records.map { it.value() }
+                        .filter { it["@final"]?.asBoolean() ?: false }
+                        .filter { it.hasNonNull("@besvart") }
                     assertEquals(1, finalRecords.size)
                     val record = finalRecords.first()
                     val løsninger = record["@løsning"].fields().asSequence().toList()
@@ -189,7 +195,9 @@ internal class AppTest : CoroutineScope {
                 .atMost(15, TimeUnit.SECONDS)
                 .untilAsserted {
                     records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    val finalRecords = records.map { it.value() }.filter { it["final"]?.asBoolean() ?: false }
+                    val finalRecords = records.map { it.value() }
+                        .filter { it["@final"]?.asBoolean() ?: false }
+                        .filter { it.hasNonNull("@besvart") }
                     assertEquals(1, finalRecords.size)
                     val record = finalRecords.first()
                     assertEquals("første verdi", record["@løsning"]["AndreYtelser"]["felt1"].asText())
@@ -203,7 +211,9 @@ internal class AppTest : CoroutineScope {
                 .atMost(15, TimeUnit.SECONDS)
                 .untilAsserted {
                     records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    val finalRecords = records.map { it.value() }.filter { it["final"]?.asBoolean() ?: false }
+                    val finalRecords = records.map { it.value() }
+                        .filter { it["@final"]?.asBoolean() ?: false }
+                        .filter { it.hasNonNull("@besvart") }
                     assertEquals(1, finalRecords.size)
                     val record = finalRecords.first()
                     assertEquals("andre verdi", record["@løsning"]["AndreYtelser"]["felt1"].asText())
@@ -237,7 +247,9 @@ internal class AppTest : CoroutineScope {
                 .atMost(15, TimeUnit.SECONDS)
                 .untilAsserted {
                     records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    val finalRecords = records.map { it.value() }.filter { it["final"]?.asBoolean() ?: false }
+                    val finalRecords = records.map { it.value() }
+                        .filter { it["@final"]?.asBoolean() ?: false }
+                        .filter { it.hasNonNull("@besvart") }
                     assertEquals(1, finalRecords.size)
                     val record = finalRecords.first()
                     assertEquals("andre løsning", record["@løsning"]["Sykepengehistorikk"]["felt2"].asText())

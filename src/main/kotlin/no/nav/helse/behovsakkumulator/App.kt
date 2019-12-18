@@ -27,6 +27,7 @@ import org.apache.kafka.streams.kstream.Consumed
 import org.apache.kafka.streams.kstream.KStream
 import org.apache.kafka.streams.kstream.Produced
 import org.slf4j.LoggerFactory
+import java.time.LocalDateTime
 import java.util.Properties
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -112,8 +113,11 @@ fun createStream(
 }
 
 private fun KStream<String, JsonNode>.markerBehovFerdig(): KStream<String, JsonNode> =
-    this.mapValues { value -> (value as ObjectNode).put("final", true) as JsonNode }
-        .peek { key, _ -> log.info("Markert behov med {} som final", keyValue("id", key)) }
+    this.mapValues { value ->
+        (value as ObjectNode)
+            .put("@final", true)
+            .put("@besvart", LocalDateTime.now().toString()) as JsonNode
+    }.peek { key, _ -> log.info("Markert behov med {} som final", keyValue("id", key)) }
 
 private fun KStream<String, JsonNode>.kombinerDelløsningerPåBehov(): KStream<String, JsonNode> =
     this.groupByKey()
@@ -128,7 +132,6 @@ private fun KStream<String, JsonNode>.kombinerDelløsningerPåBehov(): KStream<S
             )
         }
 
-
 private fun KStream<String, JsonNode>.bareKomplettLøsningPåBehov(): KStream<String, JsonNode> =
     this.filter { _, value ->
         val løsninger = objectMapper.treeToValue<Map<String, JsonNode>>(value["@løsning"])
@@ -138,7 +141,7 @@ private fun KStream<String, JsonNode>.bareKomplettLøsningPåBehov(): KStream<St
 
 private fun KStream<String, JsonNode>.alleBehovSomIkkeErMarkertFerdig(): KStream<String, JsonNode> =
     this.filter { _, value -> value.hasNonNull("@løsning") }
-        .filterNot { _, value -> value["final"]?.asBoolean() == true }
+        .filterNot { _, value -> value["@final"]?.asBoolean() == true }
         .peek { key, value ->
             log.info(
                 "Mottok {} for behov med {}",
