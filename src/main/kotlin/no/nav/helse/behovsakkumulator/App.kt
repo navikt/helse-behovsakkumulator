@@ -24,6 +24,7 @@ import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.kstream.Consumed
+import org.apache.kafka.streams.kstream.Grouped
 import org.apache.kafka.streams.kstream.KStream
 import org.apache.kafka.streams.kstream.Produced
 import org.slf4j.LoggerFactory
@@ -117,17 +118,19 @@ private fun KStream<String, JsonNode>.markerBehovFerdig(): KStream<String, JsonN
         (value as ObjectNode)
             .put("@final", true)
             .put("@besvart", LocalDateTime.now().toString()) as JsonNode
-    }.peek { key, _ -> log.info("Markert behov med {} som final", keyValue("id", key)) }
+    }.peek { _, value -> log.info("Markert behov med {} som final", keyValue("id", value["@id"].asText())) }
 
 private fun KStream<String, JsonNode>.kombinerDelløsningerPåBehov(): KStream<String, JsonNode> =
-    this.groupByKey()
+    this.groupBy({ _, value ->
+        value.path("@id").asText()
+    }, Grouped.with(Serdes.String(), JacksonKafkaSerde()))
         .reduce(::slåSammenLøsninger)
         .toStream()
-        .peek { key, value ->
+        .peek { _, value ->
             log.info(
                 "Satt sammen {} for behov med id {}. Forventer {}",
                 keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
-                keyValue("id", key),
+                keyValue("id", value["@id"].asText()),
                 keyValue("behov", value["@behov"].asSequence().map(JsonNode::asText).joinToString(", "))
             )
         }
@@ -142,11 +145,11 @@ private fun KStream<String, JsonNode>.bareKomplettLøsningPåBehov(): KStream<St
 private fun KStream<String, JsonNode>.alleBehovSomIkkeErMarkertFerdig(): KStream<String, JsonNode> =
     this.filter { _, value -> value.hasNonNull("@løsning") }
         .filterNot { _, value -> value["@final"]?.asBoolean() == true }
-        .peek { key, value ->
+        .peek { _, value ->
             log.info(
                 "Mottok {} for behov med {}",
                 keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
-                keyValue("id", key)
+                keyValue("id", value["@id"].asText())
             )
         }
 
