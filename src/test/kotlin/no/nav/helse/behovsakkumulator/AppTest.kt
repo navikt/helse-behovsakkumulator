@@ -38,7 +38,7 @@ internal class AppTest : CoroutineScope {
         }
     }
 
-    private val testTopic = "privat-helse-sykepenger-behov"
+    private val testTopic = "privat-helse-sykepenger-rapid-v1"
     private val topicInfos = listOf(
         KafkaEnvironment.TopicInfo(testTopic)
     )
