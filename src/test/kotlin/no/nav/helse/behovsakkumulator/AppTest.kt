@@ -54,7 +54,7 @@ internal class AppTest : CoroutineScope {
     private val serviceUser = ServiceUser("user", "password")
     private val environment = Environment(
         kafkaBootstrapServers = embeddedKafkaEnvironment.brokersURL,
-        spleisBehovtopic = testTopic
+        spleisRapidtopic = testTopic
     )
     private val testKafkaProperties = loadBaseConfig(environment, serviceUser).apply {
         this[CommonClientConfigs.SECURITY_PROTOCOL_CONFIG] = "PLAINTEXT"

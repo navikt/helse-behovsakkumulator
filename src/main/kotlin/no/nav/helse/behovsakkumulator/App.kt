@@ -96,14 +96,14 @@ fun createStream(
     val builder = StreamsBuilder()
     builder
         .stream<String, JsonNode>(
-            environment.spleisBehovtopic,
+            environment.spleisRapidtopic,
             Consumed.with(Serdes.StringSerde(), JacksonKafkaSerde())
         )
         .alleBehovSomIkkeErMarkertFerdig()
         .kombinerDelløsningerPåBehov()
         .bareKomplettLøsningPåBehov()
         .markerBehovFerdig()
-        .to(environment.spleisBehovtopic, Produced.with(Serdes.StringSerde(), JacksonKafkaSerde()))
+        .to(environment.spleisRapidtopic, Produced.with(Serdes.StringSerde(), JacksonKafkaSerde()))
     return KafkaStreams(builder.build(), baseConfig.toStreamsConfig()).apply {
         setUncaughtExceptionHandler { _, err ->
             log.error("Caught exception in stream: ${err.message}", err)
