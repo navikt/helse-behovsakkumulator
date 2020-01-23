@@ -33,5 +33,5 @@ fun Properties.toProducerConfig(): Properties = Properties().also {
 
 fun Properties.toStreamsConfig(): Properties = Properties().also {
     it.putAll(this)
-    it[StreamsConfig.APPLICATION_ID_CONFIG] = "behovsakkumulator"
+    it[StreamsConfig.APPLICATION_ID_CONFIG] = "behovsakkumulator-rapid"
 }
