@@ -1,5 +1,6 @@
 package no.nav.helse.behovsakkumulator
 
+import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import kotlinx.coroutines.CoroutineScope
@@ -8,10 +9,14 @@ import no.nav.common.KafkaEnvironment
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.config.SaslConfigs
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.kafka.common.serialization.StringSerializer
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.StreamsConfig
 import org.awaitility.Awaitility.await
@@ -23,6 +28,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.nio.file.Files
 import java.time.Duration
+import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.CoroutineContext
@@ -40,7 +46,7 @@ internal class AppTest : CoroutineScope {
 
     private val testTopic = "privat-helse-sykepenger-rapid-v1"
     private val topicInfos = listOf(
-        KafkaEnvironment.TopicInfo(testTopic)
+        KafkaEnvironment.TopicInfo(testTopic, partitions = 1)
     )
 
     private val embeddedKafkaEnvironment = KafkaEnvironment(
@@ -64,9 +70,12 @@ internal class AppTest : CoroutineScope {
 
     private lateinit var stream: KafkaStreams
 
-    private val behovProducer = KafkaProducer<String, JsonNode>(testKafkaProperties.toProducerConfig())
-    private val behovConsumer = KafkaConsumer<String, JsonNode>(testKafkaProperties.toConsumerConfig().also {
+    private val behovProducer = KafkaProducer<String, String>(testKafkaProperties.toProducerConfig().also {
+        it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
+    })
+    private val behovConsumer = KafkaConsumer<String, String>(testKafkaProperties.toConsumerConfig().also {
         it[ConsumerConfig.GROUP_ID_CONFIG] = "noefornuftigværsåsnill"
+        it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
     }).also {
         it.subscribe(listOf(testTopic))
     }
@@ -85,24 +94,25 @@ internal class AppTest : CoroutineScope {
 
     @Test
     fun `frittstående svar blir markert final`() {
-        val behov4 = objectMapper.readTree("""{"@id": "behovsid5", "aktørId": "aktørid1", "@behov": ["AndreYtelser"]}""")
+        val behov4 =
+            objectMapper.readTree("""{"@id": "behovsid5", "aktørId": "aktørid1", "@behov": ["AndreYtelser"]}""")
         val løsning4 = behov4.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
-        behovProducer.send(ProducerRecord(testTopic, "behovsid5", behov4))
+        behovProducer.send(ProducerRecord(testTopic, "behovsid5", behov4.toString()))
         behovProducer.send(ProducerRecord(testTopic, "behovsid5", løsning4))
 
-        mutableListOf<ConsumerRecord<String, JsonNode>>().also { records ->
+        mutableListOf<JsonNode>().also { records ->
             await()
                 .atMost(10, TimeUnit.SECONDS)
                 .untilAsserted {
-                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    val finalRecords = records.map { it.value() }
+                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).tryParseJsonNodes())
+                    val finalRecords = records
                         .filter { it["@final"]?.asBoolean() ?: false }
                         .filter { it.hasNonNull("@besvart") }
                     assertEquals(1, finalRecords.size)
                     val løsninger = finalRecords.first()["@løsning"].fields().asSequence().toList()
                     val løsningTyper = løsninger.map { it.key }
                     assertTrue(løsningTyper.containsAll(listOf("AndreYtelser")))
-                    assertEquals(1,løsningTyper.size)
+                    assertEquals(1, løsningTyper.size)
                 }
         }
         behovConsumer.poll(Duration.ofMillis(1000))
@@ -115,17 +125,17 @@ internal class AppTest : CoroutineScope {
         val løsning1 = behov1.medLøsning("""{ "Sykepengehistorikk": [] }""")
         val løsning2 = behov1.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
         val løsning3 = behov1.medLøsning("""{ "Foreldrepenger": {} }""")
-        behovProducer.send(ProducerRecord(testTopic, "behovsid1", behov1))
+        behovProducer.send(ProducerRecord(testTopic, "behovsid1", behov1.toString()))
         behovProducer.send(ProducerRecord(testTopic, "behovsid1", løsning1))
         behovProducer.send(ProducerRecord(testTopic, "behovsid1", løsning2))
         behovProducer.send(ProducerRecord(testTopic, "behovsid1", løsning3))
 
-        mutableListOf<ConsumerRecord<String, JsonNode>>().also { records ->
+        mutableListOf<JsonNode>().also { records ->
             await()
                 .atMost(10, TimeUnit.SECONDS)
                 .untilAsserted {
-                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    val finalRecords = records.map { it.value() }
+                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).tryParseJsonNodes())
+                    val finalRecords = records
                         .filter { it["@final"]?.asBoolean() ?: false }
                         .filter { it.hasNonNull("@besvart") }
                     assertEquals(1, finalRecords.size)
@@ -149,20 +159,20 @@ internal class AppTest : CoroutineScope {
         val løsning1ForBehov3 = behov3.medLøsning("""{ "Sykepengehistorikk": [] }""")
         val løsning2ForBehov3 = behov3.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
         val løsning3ForBehov3 = behov3.medLøsning("""{ "Foreldrepenger": {} }""")
-        behovProducer.send(ProducerRecord(testTopic, "behovsid2", behov2))
-        behovProducer.send(ProducerRecord(testTopic, "behovsid3", behov3))
+        behovProducer.send(ProducerRecord(testTopic, "behovsid2", behov2.toString()))
+        behovProducer.send(ProducerRecord(testTopic, "behovsid3", behov3.toString()))
         behovProducer.send(ProducerRecord(testTopic, "behovsid2", løsning1ForBehov2))
         behovProducer.send(ProducerRecord(testTopic, "behovsid3", løsning2ForBehov3))
         behovProducer.send(ProducerRecord(testTopic, "behovsid2", løsning2ForBehov2))
         behovProducer.send(ProducerRecord(testTopic, "behovsid3", løsning1ForBehov3))
         behovProducer.send(ProducerRecord(testTopic, "behovsid3", løsning3ForBehov3))
 
-        mutableListOf<ConsumerRecord<String, JsonNode>>().also { records ->
+        mutableListOf<JsonNode>().also { records ->
             await()
                 .atMost(10, TimeUnit.SECONDS)
                 .untilAsserted {
-                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    val finalRecords = records.map { it.value() }
+                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).tryParseJsonNodes())
+                    val finalRecords = records
                         .filter { it["@final"]?.asBoolean() ?: false }
                         .filter { it.hasNonNull("@besvart") }
                     assertEquals(1, finalRecords.size)
@@ -178,24 +188,24 @@ internal class AppTest : CoroutineScope {
     @Test
     fun `produserer en ny final ved ny løsning på et behov som tidligere har blitt løst`() {
         val behov4 =
-            objectMapper.readTree("""{"@id": "behovsid4", "aktørId": "aktørid1", "@behov": ["Sykepengehistorikk", "AndreYtelser"]}""")
+            """{"@id": "behovsid4", "aktørId": "aktørid1", "@behov": ["Sykepengehistorikk", "AndreYtelser"]}"""
         val løsning1ForBehov4 =
-            objectMapper.readTree("""{"@id": "behovsid4", "aktørId": "aktørid1", "@behov": ["Sykepengehistorikk", "AndreYtelser"], "@løsning": { "Sykepengehistorikk": [] } }""")
+            """{"@id": "behovsid4", "aktørId": "aktørid1", "@behov": ["Sykepengehistorikk", "AndreYtelser"], "@løsning": { "Sykepengehistorikk": [] } }"""
         val løsning2ForBehov4 =
-            objectMapper.readTree("""{"@id": "behovsid4", "aktørId": "aktørid1", "@behov": ["Sykepengehistorikk", "AndreYtelser"], "@løsning": { "AndreYtelser": { "felt1": "første verdi"} } }""")
+            """{"@id": "behovsid4", "aktørId": "aktørid1", "@behov": ["Sykepengehistorikk", "AndreYtelser"], "@løsning": { "AndreYtelser": { "felt1": "første verdi"} } }"""
         val duplikatløsning2ForBehov4 =
-            objectMapper.readTree("""{"@id": "behovsid4", "aktørId": "aktørid1", "@behov": ["Sykepengehistorikk", "AndreYtelser"], "@løsning": { "AndreYtelser": { "felt1": "andre verdi"} } }""")
+            """{"@id": "behovsid4", "aktørId": "aktørid1", "@behov": ["Sykepengehistorikk", "AndreYtelser"], "@løsning": { "AndreYtelser": { "felt1": "andre verdi"} } }"""
 
         behovProducer.send(ProducerRecord(testTopic, "behovsid4", behov4)).get()
         behovProducer.send(ProducerRecord(testTopic, "behovsid4", løsning1ForBehov4)).get()
         behovProducer.send(ProducerRecord(testTopic, "behovsid4", løsning2ForBehov4)).get()
 
-        mutableListOf<ConsumerRecord<String, JsonNode>>().also { records ->
+        mutableListOf<JsonNode>().also { records ->
             await()
-                .atMost(15, TimeUnit.SECONDS)
+                .atMost(10, TimeUnit.SECONDS)
                 .untilAsserted {
-                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    val finalRecords = records.map { it.value() }
+                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).tryParseJsonNodes())
+                    val finalRecords = records
                         .filter { it["@final"]?.asBoolean() ?: false }
                         .filter { it.hasNonNull("@besvart") }
                     assertEquals(1, finalRecords.size)
@@ -206,12 +216,12 @@ internal class AppTest : CoroutineScope {
 
         behovProducer.send(ProducerRecord(testTopic, "behovsid4", duplikatløsning2ForBehov4)).get()
 
-        mutableListOf<ConsumerRecord<String, JsonNode>>().also { records ->
+        mutableListOf<JsonNode>().also { records ->
             await()
-                .atMost(15, TimeUnit.SECONDS)
+                .atMost(10, TimeUnit.SECONDS)
                 .untilAsserted {
-                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    val finalRecords = records.map { it.value() }
+                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).tryParseJsonNodes())
+                    val finalRecords = records
                         .filter { it["@final"]?.asBoolean() ?: false }
                         .filter { it.hasNonNull("@besvart") }
                     assertEquals(1, finalRecords.size)
@@ -226,15 +236,15 @@ internal class AppTest : CoroutineScope {
         val behovsid = "behovsid6"
         val behov = "[\"Sykepengehistorikk\", \"AndreYtelser\", \"Foreldrepenger\"]"
         val behov6 =
-            objectMapper.readTree("""{"@id": "$behovsid", "aktørId": "aktørid1", "@behov": $behov}""")
+            """{"@id": "$behovsid", "aktørId": "aktørid1", "@behov": $behov}"""
         val løsning1ForBehov6 =
-            objectMapper.readTree("""{"@id": "$behovsid", "aktørId": "aktørid1", "@behov": $behov, "@løsning": { "Sykepengehistorikk": { "felt2": "første løsning" } } }""")
+            """{"@id": "$behovsid", "aktørId": "aktørid1", "@behov": $behov, "@løsning": { "Sykepengehistorikk": { "felt2": "første løsning" } } }"""
         val løsning2ForBehov6 =
-            objectMapper.readTree("""{"@id": "$behovsid", "aktørId": "aktørid1", "@behov": $behov, "@løsning": { "AndreYtelser": { "felt1": "første verdi" } } }""")
+            """{"@id": "$behovsid", "aktørId": "aktørid1", "@behov": $behov, "@løsning": { "AndreYtelser": { "felt1": "første verdi" } } }"""
         val duplikatløsning2ForBehov6 =
-            objectMapper.readTree("""{"@id": "$behovsid", "aktørId": "aktørid1", "@behov": $behov, "@løsning": { "Sykepengehistorikk": { "felt2": "andre løsning" } } }""")
+            """{"@id": "$behovsid", "aktørId": "aktørid1", "@behov": $behov, "@løsning": { "Sykepengehistorikk": { "felt2": "andre løsning" } } }"""
         val finalLøsning =
-            objectMapper.readTree("""{"@id": "$behovsid", "aktørId": "aktørid1", "@behov": $behov, "@løsning": { "Foreldrepenger": [] } }""")
+            """{"@id": "$behovsid", "aktørId": "aktørid1", "@behov": $behov, "@løsning": { "Foreldrepenger": [] } }"""
 
         behovProducer.send(ProducerRecord(testTopic, behovsid, behov6)).get()
         behovProducer.send(ProducerRecord(testTopic, behovsid, løsning1ForBehov6)).get()
@@ -242,12 +252,12 @@ internal class AppTest : CoroutineScope {
         behovProducer.send(ProducerRecord(testTopic, behovsid, duplikatløsning2ForBehov6)).get()
         behovProducer.send(ProducerRecord(testTopic, behovsid, finalLøsning)).get()
 
-        mutableListOf<ConsumerRecord<String, JsonNode>>().also { records ->
+        mutableListOf<JsonNode>().also { records ->
             await()
-                .atMost(15, TimeUnit.SECONDS)
+                .atMost(10, TimeUnit.SECONDS)
                 .untilAsserted {
-                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    val finalRecords = records.map { it.value() }
+                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).tryParseJsonNodes())
+                    val finalRecords = records
                         .filter { it["@final"]?.asBoolean() ?: false }
                         .filter { it.hasNonNull("@besvart") }
                     assertEquals(1, finalRecords.size)
@@ -257,8 +267,44 @@ internal class AppTest : CoroutineScope {
         }
     }
 
+    @Test
+    fun `overlever ugyldig json`() {
+        val behovsid0 = UUID.randomUUID().toString()
+        val behovsid1 = UUID.randomUUID().toString()
+
+        val behov1 =
+            """{
+                    "@id": "$behovsid1",
+                    "aktørId": "aktørid1",
+                    "@behov": ["Foreldrepenger"]
+            }"""
+        val løsning1 =
+            """{
+                "@id": "$behovsid1",
+                "aktørId": "aktørid1",
+                "@behov": ["Foreldrepenger"],
+                "@løsning": { "Foreldrepenger": [] }
+            }""".trimMargin()
+
+        behovProducer.send(ProducerRecord(testTopic, behovsid0, "THIS IS INVALID JSON"))
+        behovProducer.send(ProducerRecord(testTopic, behovsid1, behov1))
+        behovProducer.send(ProducerRecord(testTopic, behovsid1, løsning1))
+
+        mutableListOf<JsonNode>().also { records ->
+            await()
+                .atMost(10, TimeUnit.SECONDS)
+                .untilAsserted {
+                    records.addAll(behovConsumer.poll(Duration.ofMillis(100)).tryParseJsonNodes())
+                    val finalRecords = records
+                        .filter { it["@final"]?.asBoolean() ?: false }
+                        .filter { it.hasNonNull("@besvart") }
+                    assertEquals(1, finalRecords.size)
+                }
+        }
+    }
+
     fun JsonNode.medLøsning(løsning: String) =
-        (this.deepCopy() as ObjectNode).set("@løsning", objectMapper.readTree(løsning) ) as JsonNode
+        (this.deepCopy() as ObjectNode).set<ObjectNode>("@løsning", objectMapper.readTree(løsning)).toString()
 
     @AfterAll
     fun tearDown() {
@@ -266,4 +312,14 @@ internal class AppTest : CoroutineScope {
         embeddedKafkaEnvironment.close()
         deleteDir()
     }
+
+    fun ConsumerRecords<String, String>.tryParseJsonNodes() = toList()
+        .map {
+            try {
+                objectMapper.readTree(it.value())
+            } catch (e: JsonParseException) {
+                null
+            }
+        }
+        .filterNotNull()
 }
