@@ -17,23 +17,8 @@ fun loadBaseConfig(env: Environment, serviceUser: ServiceUser): Properties = Pro
     it["bootstrap.servers"] = env.kafkaBootstrapServers
 }
 
-fun Properties.toConsumerConfig(): Properties = Properties().also {
-    it.putAll(this)
-    it[ConsumerConfig.GROUP_ID_CONFIG] = "behovsakkumulator-consumer"
-    it[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
-    it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = JacksonKafkaDeserializer::class.java
-    it[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
-}
-
-fun Properties.toProducerConfig(): Properties = Properties().also {
-    it.putAll(this)
-    it[ConsumerConfig.GROUP_ID_CONFIG] = "behovsakkumulator-producer"
-    it[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
-    it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = JacksonKafkaSerializer::class.java
-}
-
 fun Properties.toStreamsConfig(): Properties = Properties().also {
     it.putAll(this)
     it[StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG] = LogAndContinueExceptionHandler::class.java
-    it[StreamsConfig.APPLICATION_ID_CONFIG] = "behovsakkumulator-rapid"
+    it[StreamsConfig.APPLICATION_ID_CONFIG] = "behovsakkumulator-v1"
 }

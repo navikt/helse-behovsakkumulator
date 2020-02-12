@@ -20,7 +20,7 @@ fun setUpEnvironment() =
 
 data class Environment(
     val kafkaBootstrapServers: String,
-    val spleisRapidtopic: String = "privat-helse-sykepenger-rapid-v1"
+    val spleisRapidtopic: String = "helse-rapid-v1"
 )
 
 data class ServiceUser(

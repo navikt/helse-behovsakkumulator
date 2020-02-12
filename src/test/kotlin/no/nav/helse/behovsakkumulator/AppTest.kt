@@ -28,9 +28,10 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.nio.file.Files
 import java.time.Duration
-import java.util.UUID
+import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.Comparator
 import kotlin.coroutines.CoroutineContext
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -44,7 +45,7 @@ internal class AppTest : CoroutineScope {
         }
     }
 
-    private val testTopic = "privat-helse-sykepenger-rapid-v1"
+    private val testTopic = "helse-rapid-v1"
     private val topicInfos = listOf(
         KafkaEnvironment.TopicInfo(testTopic, partitions = 1)
     )
@@ -80,6 +81,20 @@ internal class AppTest : CoroutineScope {
         it.subscribe(listOf(testTopic))
     }
 
+    fun Properties.toConsumerConfig(): Properties = Properties().also {
+        it.putAll(this)
+        it[ConsumerConfig.GROUP_ID_CONFIG] = "behovsakkumulator-consumer-v1"
+        it[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
+        it[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = JacksonKafkaDeserializer::class.java
+        it[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
+    }
+
+    fun Properties.toProducerConfig(): Properties = Properties().also {
+        it.putAll(this)
+        it[ConsumerConfig.GROUP_ID_CONFIG] = "behovsakkumulator-producer-v1"
+        it[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
+        it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = JacksonKafkaSerializer::class.java
+    }
 
     @BeforeAll
     fun setup() {
