@@ -118,7 +118,10 @@ private fun KStream<String, JsonNode>.markerBehovFerdig(): KStream<String, JsonN
         (value as ObjectNode)
             .put("@final", true)
             .put("@besvart", LocalDateTime.now().toString()) as JsonNode
-    }.peek { _, value -> log.info("Markert behov med {} som final", keyValue("id", value["@id"].asText())) }
+    }.peek { _, value -> log.info("Markert behov med {} ({}) som final",
+        keyValue("id", value["@id"].asText()),
+        keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText("IKKE_SATT"))
+    ) }
 
 private fun KStream<String, JsonNode>.kombinerDelløsningerPåBehov(): KStream<String, JsonNode> =
     this.groupBy({ _, value ->
@@ -128,9 +131,10 @@ private fun KStream<String, JsonNode>.kombinerDelløsningerPåBehov(): KStream<S
         .toStream()
         .peek { _, value ->
             log.info(
-                "Satt sammen {} for behov med id {}. Forventer {}",
+                "Satt sammen {} for behov med id {} ({}). Forventer {}",
                 keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
                 keyValue("id", value["@id"].asText()),
+                keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText("IKKE_SATT")),
                 keyValue("behov", value["@behov"].asSequence().map(JsonNode::asText).joinToString(", "))
             )
         }
@@ -147,9 +151,10 @@ private fun KStream<String, JsonNode>.alleBehovSomIkkeErMarkertFerdig(): KStream
         .filterNot { _, value -> value["@final"]?.asBoolean() == true }
         .peek { _, value ->
             log.info(
-                "Mottok {} for behov med {}",
+                "Mottok {} for behov med {} ({})",
                 keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
-                keyValue("id", value["@id"].asText())
+                keyValue("id", value["@id"].asText()),
+                keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText("IKKE_SATT"))
             )
         }
 
