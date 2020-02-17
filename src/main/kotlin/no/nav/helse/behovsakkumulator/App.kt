@@ -14,11 +14,7 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.KafkaStreams
@@ -29,7 +25,7 @@ import org.apache.kafka.streams.kstream.KStream
 import org.apache.kafka.streams.kstream.Produced
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
-import java.util.Properties
+import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -38,6 +34,7 @@ val objectMapper: ObjectMapper = jacksonObjectMapper()
     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
     .registerModule(JavaTimeModule())
 val log = LoggerFactory.getLogger("behovsakkumulator")
+val sikkerLog = LoggerFactory.getLogger("tjenestekall")
 
 data class ApplicationState(var ready: Boolean = false, var alive: Boolean = true)
 
@@ -118,10 +115,18 @@ private fun KStream<String, JsonNode>.markerBehovFerdig(): KStream<String, JsonN
         (value as ObjectNode)
             .put("@final", true)
             .put("@besvart", LocalDateTime.now().toString()) as JsonNode
-    }.peek { _, value -> log.info("Markert behov med {} ({}) som final",
-        keyValue("id", value["@id"].asText()),
-        keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText("IKKE_SATT"))
-    ) }
+    }.peek { _, value ->
+        log.info(
+            "Markert behov med {} ({}) som final",
+            keyValue("id", value["@id"].asText()),
+            keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText("IKKE_SATT"))
+        )
+        sikkerLog.info(
+            "Markert behov med {} ({}) som final",
+            keyValue("id", value["@id"].asText()),
+            keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText("IKKE_SATT"))
+        )
+    }
 
 private fun KStream<String, JsonNode>.kombinerDelløsningerPåBehov(): KStream<String, JsonNode> =
     this.groupBy({ _, value ->
@@ -131,6 +136,13 @@ private fun KStream<String, JsonNode>.kombinerDelløsningerPåBehov(): KStream<S
         .toStream()
         .peek { _, value ->
             log.info(
+                "Satt sammen {} for behov med id {} ({}). Forventer {}",
+                keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
+                keyValue("id", value["@id"].asText()),
+                keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText("IKKE_SATT")),
+                keyValue("behov", value["@behov"].asSequence().map(JsonNode::asText).joinToString(", "))
+            )
+            sikkerLog.info(
                 "Satt sammen {} for behov med id {} ({}). Forventer {}",
                 keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
                 keyValue("id", value["@id"].asText()),
@@ -151,6 +163,12 @@ private fun KStream<String, JsonNode>.alleBehovSomIkkeErMarkertFerdig(): KStream
         .filterNot { _, value -> value["@final"]?.asBoolean() == true }
         .peek { _, value ->
             log.info(
+                "Mottok {} for behov med {} ({})",
+                keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
+                keyValue("id", value["@id"].asText()),
+                keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText("IKKE_SATT"))
+            )
+            sikkerLog.info(
                 "Mottok {} for behov med {} ({})",
                 keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
                 keyValue("id", value["@id"].asText()),

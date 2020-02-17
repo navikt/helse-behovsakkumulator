@@ -28,6 +28,8 @@ spec:
   prometheus:
     enabled: true
     path: /metrics
+  secureLogs:
+    enabled: true
   vault:
     enabled: true
     paths:
