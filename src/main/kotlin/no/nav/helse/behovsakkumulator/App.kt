@@ -119,12 +119,12 @@ private fun KStream<String, JsonNode>.markerBehovFerdig(): KStream<String, JsonN
         log.info(
             "Markert behov med {} ({}) som final",
             keyValue("id", value["@id"].asText()),
-            keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText("IKKE_SATT"))
+            keyValue("vedtaksperiodeId", value.path("vedtaksperiodeId").asText("IKKE_SATT"))
         )
         sikkerLog.info(
             "Markert behov med {} ({}) som final",
             keyValue("id", value["@id"].asText()),
-            keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText("IKKE_SATT"))
+            keyValue("vedtaksperiodeId", value.path("vedtaksperiodeId").asText("IKKE_SATT"))
         )
     }
 
@@ -139,14 +139,14 @@ private fun KStream<String, JsonNode>.kombinerDelløsningerPåBehov(): KStream<S
                 "Satt sammen {} for behov med id {} ({}). Forventer {}",
                 keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
                 keyValue("id", value["@id"].asText()),
-                keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText("IKKE_SATT")),
+                keyValue("vedtaksperiodeId", value.path("vedtaksperiodeId").asText("IKKE_SATT")),
                 keyValue("behov", value["@behov"].asSequence().map(JsonNode::asText).joinToString(", "))
             )
             sikkerLog.info(
                 "Satt sammen {} for behov med id {} ({}). Forventer {}",
                 keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
                 keyValue("id", value["@id"].asText()),
-                keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText("IKKE_SATT")),
+                keyValue("vedtaksperiodeId", value.path("vedtaksperiodeId").asText("IKKE_SATT")),
                 keyValue("behov", value["@behov"].asSequence().map(JsonNode::asText).joinToString(", "))
             )
         }
@@ -166,13 +166,13 @@ private fun KStream<String, JsonNode>.alleBehovSomIkkeErMarkertFerdig(): KStream
                 "Mottok {} for behov med {} ({})",
                 keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
                 keyValue("id", value["@id"].asText()),
-                keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText("IKKE_SATT"))
+                keyValue("vedtaksperiodeId", value.path("vedtaksperiodeId").asText("IKKE_SATT"))
             )
             sikkerLog.info(
                 "Mottok {} for behov med {} ({})",
                 keyValue("løsninger", value["@løsning"].fieldNames().asSequence().joinToString(", ")),
                 keyValue("id", value["@id"].asText()),
-                keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText("IKKE_SATT"))
+                keyValue("vedtaksperiodeId", value.path("vedtaksperiodeId").asText("IKKE_SATT"))
             )
         }
 
