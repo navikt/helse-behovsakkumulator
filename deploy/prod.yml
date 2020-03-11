@@ -1,7 +1,7 @@
 apiVersion: nais.io/v1alpha1
 kind: Application
 metadata:
-  name: behovsakkumulator
+  name: {{app}}
   namespace: default
   labels:
     team: {{team}}
@@ -9,10 +9,10 @@ spec:
   image: {{image}}:{{tag}}
   port: 8080
   liveness:
-    path: /is_alive
+    path: /isalive
     initialDelay: 5
   readiness:
-    path: /is_ready
+    path: /isready
     initialDelay: 5
   resources:
     limits:
@@ -35,8 +35,12 @@ spec:
     paths:
       - mountPath: /var/run/secrets/nais.io/vault
         kvPath: /kv/prod/fss/behovsakkumulator/default
-      - mountPath: /var/run/secrets/nais.io/serviceuser
+      - mountPath: /var/run/secrets/nais.io/service_user
         kvPath: /serviceuser/data/prod/srvbehovsakkumulat
   env:
     - name: KAFKA_BOOTSTRAP_SERVERS
       value: a01apvl00145.adeo.no:8443,a01apvl00146.adeo.no:8443,a01apvl00147.adeo.no:8443,a01apvl00148.adeo.no:8443,a01apvl00149.adeo.no:8443,a01apvl00150.adeo.no:8443
+    - name: KAFKA_CONSUMER_GROUP_ID
+      value: behovsakkumulator-v2
+    - name: KAFKA_RAPID_TOPIC
+      value: helse-rapid-v1
