@@ -44,10 +44,6 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
         }
     }
 
-    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
-        sikkerLog.warn(problems.toExtendedReport())
-    }
-
     private fun JsonMessage.erKomplett(): Boolean {
         val løsninger = this["@løsning"].fieldNames().asSequence().toList()
         val behov = this["@behov"].map(JsonNode::asText)
