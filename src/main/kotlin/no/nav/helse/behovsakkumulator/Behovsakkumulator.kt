@@ -45,7 +45,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
     }
 
     override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
-        println(problems.toExtendedReport())
+        sikkerLog.warn(problems.toExtendedReport())
     }
 
     private fun JsonMessage.erKomplett(): Boolean {
