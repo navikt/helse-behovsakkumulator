@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import no.nav.helse.rapids_rivers.JsonMessage
-import no.nav.helse.rapids_rivers.MessageProblems
 import no.nav.helse.rapids_rivers.RapidsConnection
 import no.nav.helse.rapids_rivers.River
+import no.nav.helse.rapids_rivers.asLocalDateTime
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
@@ -22,6 +22,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
         River(rapidsConnection).apply {
             validate { it.forbid("@final") }
             validate { it.requireKey("@id", "@behov", "@løsning", "vedtaksperiodeId") }
+            validate { it.require("@opprettet", JsonNode::asLocalDateTime) }
         }.register(this)
     }
 
@@ -40,6 +41,9 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
             resultat.first.send(resultat.second.toJson())
             behovUtenLøsning.remove(id)
         } else {
+            behovUtenLøsning
+                .filterValues { (_, packet) -> packet["@opprettet"].asLocalDateTime().isBefore(LocalDateTime.now().minusMinutes(30)) }
+                .forEach { (key, _) -> behovUtenLøsning.remove(key) }
             behovUtenLøsning[id] = resultat
         }
     }

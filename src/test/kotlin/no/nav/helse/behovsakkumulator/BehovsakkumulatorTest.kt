@@ -34,7 +34,7 @@ internal class BehovsakkumulatorTest {
 
     @Test
     fun `frittstående svar blir markert final`() {
-        val behov4 = objectMapper.readTree("""{"@id": "behovsid5", "vedtaksperiodeId": "id", "@behov": ["AndreYtelser"]}""")
+        val behov4 = objectMapper.readTree("""{"@id": "behovsid5", "@opprettet": "${LocalDateTime.now()}", "vedtaksperiodeId": "id", "@behov": ["AndreYtelser"]}""")
         val løsning4 = behov4.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
         rapid.sendTestMessage("behovsid5", behov4.toString())
         rapid.sendTestMessage("behovsid5", løsning4)
@@ -52,7 +52,7 @@ internal class BehovsakkumulatorTest {
     @Test
     fun `fler delsvar blir kombinert til et komplett svar`() {
         val behov1 =
-            objectMapper.readTree("""{"@id": "behovsid1", "vedtaksperiodeId": "id", "@behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"]}""")
+            objectMapper.readTree("""{"@id": "behovsid1", "@opprettet": "${LocalDateTime.now()}", "vedtaksperiodeId": "id", "@behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"]}""")
         val løsning1 = behov1.medLøsning("""{ "Sykepengehistorikk": [] }""")
         val løsning2 = behov1.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
         val løsning3 = behov1.medLøsning("""{ "Foreldrepenger": {} }""")
@@ -70,12 +70,12 @@ internal class BehovsakkumulatorTest {
     @Test
     fun `løser behov #3 uavhengig av om behov #2 er ferdigstilt`() {
         val behov2 =
-            objectMapper.readTree("""{"@id": "behovsid2", "vedtaksperiodeId": "id", "@behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"]}""")
+            objectMapper.readTree("""{"@id": "behovsid2", "@opprettet": "${LocalDateTime.now()}", "vedtaksperiodeId": "id", "@behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"]}""")
         val løsning1ForBehov2 = behov2.medLøsning("""{ "Sykepengehistorikk": [] }""")
         val løsning2ForBehov2 = behov2.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
 
         val behov3 =
-            objectMapper.readTree("""{"@id": "behovsid3", "vedtaksperiodeId": "id", "@behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"]}""")
+            objectMapper.readTree("""{"@id": "behovsid3", "@opprettet": "${LocalDateTime.now()}", "vedtaksperiodeId": "id", "@behov": ["Sykepengehistorikk", "AndreYtelser", "Foreldrepenger"]}""")
         val løsning1ForBehov3 = behov3.medLøsning("""{ "Sykepengehistorikk": [] }""")
         val løsning2ForBehov3 = behov3.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
         val løsning3ForBehov3 = behov3.medLøsning("""{ "Foreldrepenger": {} }""")
@@ -103,12 +103,14 @@ internal class BehovsakkumulatorTest {
         val behov1 =
             """{
                     "@id": "$behovsid1",
+                    "@opprettet": "${LocalDateTime.now()}",
                     "vedtaksperiodeId": "id",
                     "@behov": ["Foreldrepenger"]
             }"""
         val løsning1 =
             """{
                 "@id": "$behovsid1",
+                "@opprettet": "${LocalDateTime.now()}",
                 "vedtaksperiodeId": "id",
                 "@behov": ["Foreldrepenger"],
                 "@løsning": { "Foreldrepenger": [] }
