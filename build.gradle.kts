@@ -4,7 +4,7 @@ val junitJupiterVersion = "5.6.0"
 val ktorVersion = "1.3.1"
 
 plugins {
-    kotlin("jvm") version "1.3.70"
+    kotlin("jvm") version "1.3.72"
 }
 
 group = "no.nav.helse"
@@ -25,7 +25,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:1.a1c8748")
+    implementation("com.github.navikt:rapids-and-rivers:1.73dddb5")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-client-auth-jvm:$ktorVersion")
     implementation("io.ktor:ktor-client-json-jvm:$ktorVersion")
