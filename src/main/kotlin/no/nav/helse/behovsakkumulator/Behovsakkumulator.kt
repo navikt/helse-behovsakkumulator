@@ -7,6 +7,7 @@ import no.nav.helse.rapids_rivers.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
+import java.util.*
 
 class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListener {
 
@@ -46,19 +47,38 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
             resultat.first.send(resultat.second.toJson())
             behovUtenLøsning.remove(id)
         } else {
-            fjernGamleBehovUtenSvar()
+            fjernGamleBehovUtenSvar(context)
             behovUtenLøsning[id] = resultat
         }
     }
 
-    private fun fjernGamleBehovUtenSvar() {
+    private fun fjernGamleBehovUtenSvar(context: RapidsConnection.MessageContext) {
         val grense = LocalDateTime.now().minusMinutes(30)
         behovUtenLøsning
             .filterValues { (_, packet) -> packet["@opprettet"].asLocalDateTime().isBefore(grense) }
             .forEach { (key, value) ->
-                loggFjerneGammeltBehov(log, value.second)
-                loggFjerneGammeltBehov(sikkerLog, value.second)
+                val forventninger = value.second["@behov"].map(JsonNode::asText)
+                val løsninger = value.second["@løsning"].fieldNames().asSequence().toList()
+                val mangler = forventninger.filter { it !in løsninger }
+
+                loggFjerneGammeltBehov(log, value.second, mangler)
+                loggFjerneGammeltBehov(sikkerLog, value.second, mangler)
                 behovUtenLøsning.remove(key)
+
+                val behovId = value.second["@id"].asText()
+                context.send(behovId, JsonMessage.newMessage(mapOf(
+                    "@event_name" to "behov_uten_fullstendig_løsning",
+                    "@id" to UUID.randomUUID(),
+                    "@opprettet" to LocalDateTime.now(),
+                    "behov_id" to behovId,
+                    "behov_opprettet" to value.second["@opprettet"].asLocalDateTime(),
+                    "forventet" to forventninger,
+                    "løsninger" to løsninger,
+                    "mangler" to mangler,
+                    "ufullstendig_behov" to value.second.toJson()
+                )).toJson().also {
+                    sikkerLog.info("sender event=behov_uten_fullstendig_løsning:\n\t$it")
+                })
             }
     }
 
@@ -106,10 +126,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
         )
     }
 
-    private fun loggFjerneGammeltBehov(logger: Logger, packet: JsonMessage) {
-        val forventninger = packet["@behov"].map(JsonNode::asText)
-        val løsninger = packet["@løsning"].fieldNames().asSequence().toList()
-        val mangler = forventninger.filter { it !in løsninger }
+    private fun loggFjerneGammeltBehov(logger: Logger, packet: JsonMessage, mangler: List<String>) {
         logger.error(
             "Fjerner behov {} for {}. Mottok aldri løsning for {} innen 30 minutter.",
             keyValue("id", packet["@id"].asText()),
