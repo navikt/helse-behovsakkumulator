@@ -22,7 +22,8 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
                 it.demandKey("@behov")
                 it.demandKey("@løsning")
                 it.rejectKey("@final")
-                it.requireKey("@id", "vedtaksperiodeId")
+                it.requireKey("@id")
+                it.interestedIn("vedtaksperiodeId")
                 it.require("@opprettet", JsonNode::asLocalDateTime)
             }
         }.register(this)
@@ -101,7 +102,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
         logger.info(
             "Markert behov med {} ({}) som final",
             keyValue("id", løsning["@id"].asText()),
-            keyValue("vedtaksperiodeId", løsning["vedtaksperiodeId"].asText())
+            keyValue("vedtaksperiodeId", løsning["vedtaksperiodeId"].asText("IKKE_SATT"))
         )
     }
 
@@ -111,7 +112,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
             "Satt sammen {} for behov med id {} ({}). Mangler {}. Forventer {}",
             keyValue("løsninger", løsninger.joinToString(", ")),
             keyValue("id", løsningPacket["@id"].asText()),
-            keyValue("vedtaksperiodeId", løsningPacket["vedtaksperiodeId"].asText()),
+            keyValue("vedtaksperiodeId", løsningPacket["vedtaksperiodeId"].asText("IKKE_SATT")),
             keyValue("mangler_behov", løsningPacket["@behov"].filter { it.asText() !in løsninger }.joinToString(", ", transform = JsonNode::asText)),
             keyValue("behov", løsningPacket["@behov"].joinToString(", ", transform = JsonNode::asText))
         )
@@ -122,7 +123,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
             "Mottok {} for behov med {} ({})",
             keyValue("løsninger", packet["@løsning"].fieldNames().asSequence().joinToString(", ")),
             keyValue("id", packet["@id"].asText()),
-            keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asText())
+            keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asText("IKKE_SATT"))
         )
     }
 
@@ -130,7 +131,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
         logger.error(
             "Fjerner behov {} for {}. Mottok aldri løsning for {} innen 30 minutter.",
             keyValue("id", packet["@id"].asText()),
-            keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asText()),
+            keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asText("IKKE_SATT")),
             keyValue("behov", mangler.joinToString(", "))
         )
     }
