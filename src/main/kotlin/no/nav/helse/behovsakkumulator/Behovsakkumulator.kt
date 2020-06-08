@@ -128,7 +128,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
     }
 
     private fun loggFjerneGammeltBehov(logger: Logger, packet: JsonMessage, mangler: List<String>) {
-        logger.error(
+        logger.warn(
             "Fjerner behov {} for {}. Mottok aldri løsning for {} innen 30 minutter.",
             keyValue("id", packet["@id"].asText()),
             keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asText("IKKE_SATT")),
