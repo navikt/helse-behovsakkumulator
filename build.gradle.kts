@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val junitJupiterVersion = "5.6.0"
-val ktorVersion = "1.3.1"
+val ktorVersion = "1.3.2"
 
 plugins {
     kotlin("jvm") version "1.3.72"
@@ -14,6 +14,7 @@ val githubPassword: String by project
 
 repositories {
     mavenCentral()
+    maven("https://kotlin.bintray.com/ktor")
     maven {
         url = uri("https://maven.pkg.github.com/navikt/rapids-and-rivers")
         credentials {
@@ -25,7 +26,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:1.73dddb5")
+    implementation("com.github.navikt:rapids-and-rivers:1.74ae9cb")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-client-auth-jvm:$ktorVersion")
     implementation("io.ktor:ktor-client-json-jvm:$ktorVersion")
