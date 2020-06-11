@@ -2,7 +2,7 @@ apiVersion: nais.io/v1alpha1
 kind: Application
 metadata:
   name: {{app}}
-  namespace: default
+  namespace: tbd
   labels:
     team: {{team}}
 spec:
@@ -33,8 +33,6 @@ spec:
   vault:
     enabled: true
     paths:
-      - mountPath: /var/run/secrets/nais.io/vault
-        kvPath: /kv/prod/fss/behovsakkumulator/default
       - mountPath: /var/run/secrets/nais.io/service_user
         kvPath: /serviceuser/data/prod/srvbehovsakkumulat
   env:
