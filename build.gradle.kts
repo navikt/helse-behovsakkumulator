@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 val junitJupiterVersion = "5.6.2"
 val ktorVersion = "1.3.2"
 
@@ -14,8 +12,8 @@ val githubPassword: String by project
 
 repositories {
     mavenCentral()
-    maven("https://kotlin.bintray.com/ktor")
     maven { url = uri("https://jitpack.io") }
+    maven("https://kotlin.bintray.com/ktor")
     maven("https://packages.confluent.io/maven/")
 }
 
@@ -37,45 +35,37 @@ dependencies {
     testImplementation("io.mockk:mockk:1.10.0")
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_12
-    targetCompatibility = JavaVersion.VERSION_12
-}
+tasks {
+    compileKotlin {
+        kotlinOptions.jvmTarget = "12"
+    }
+    compileTestKotlin {
+        kotlinOptions.jvmTarget = "12"
+    }
 
-tasks.named<KotlinCompile>("compileKotlin") {
-    kotlinOptions.jvmTarget = "12"
-}
+    named<Jar>("jar") {
+        archiveBaseName.set("app")
 
-tasks.named<KotlinCompile>("compileTestKotlin") {
-    kotlinOptions.jvmTarget = "12"
-}
+        manifest {
+            attributes["Main-Class"] = "no.nav.helse.behovsakkumulator.AppKt"
+            attributes["Class-Path"] = configurations.runtimeClasspath.get().joinToString(separator = " ") {
+                it.name
+            }
+        }
 
-tasks.named<Jar>("jar") {
-    archiveBaseName.set("app")
-
-    manifest {
-        attributes["Main-Class"] = "no.nav.helse.behovsakkumulator.AppKt"
-        attributes["Class-Path"] = configurations.runtimeClasspath.get().joinToString(separator = " ") {
-            it.name
+        doLast {
+            configurations.runtimeClasspath.get().forEach {
+                val file = File("$buildDir/libs/${it.name}")
+                if (!file.exists())
+                    it.copyTo(file)
+            }
         }
     }
 
-    doLast {
-        configurations.runtimeClasspath.get().forEach {
-            val file = File("$buildDir/libs/${it.name}")
-            if (!file.exists())
-                it.copyTo(file)
+    withType<Test> {
+        useJUnitPlatform()
+        testLogging {
+            events("passed", "skipped", "failed")
         }
     }
-}
-
-tasks.withType<Test> {
-    useJUnitPlatform()
-    testLogging {
-        events("passed", "skipped", "failed")
-    }
-}
-
-tasks.withType<Wrapper> {
-    gradleVersion = "6.5.1"
 }
