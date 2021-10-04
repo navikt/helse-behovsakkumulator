@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import no.nav.helse.rapids_rivers.MessageContext
 import no.nav.helse.rapids_rivers.RapidsConnection
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -131,7 +132,7 @@ internal class BehovsakkumulatorTest {
 
         fun sendTestMessage(key: String, message: String) {
             val context = TestContext(key)
-            listeners.forEach { it.onMessage(message, context) }
+            notifyMessage(message, context)
         }
 
         override fun publish(message: String) {}
@@ -140,11 +141,11 @@ internal class BehovsakkumulatorTest {
         override fun stop() {}
 
         private inner class TestContext(private val originalKey: String) : MessageContext {
-            override fun send(message: String) {
-                send(originalKey, message)
+            override fun publish(message: String) {
+                publish(originalKey, message)
             }
 
-            override fun send(key: String, message: String) {
+            override fun publish(key: String, message: String) {
                 sentMessages.add(key to objectMapper.readTree(message))
             }
         }

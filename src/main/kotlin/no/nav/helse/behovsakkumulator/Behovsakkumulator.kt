@@ -14,7 +14,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
     private val log = LoggerFactory.getLogger(this::class.java)
     private val sikkerLog = LoggerFactory.getLogger("tjenestekall")
 
-    private val behovUtenLøsning = mutableMapOf<String, Pair<RapidsConnection.MessageContext, JsonMessage>>()
+    private val behovUtenLøsning = mutableMapOf<String, Pair<MessageContext, JsonMessage>>()
 
     init {
         River(rapidsConnection).apply {
@@ -29,11 +29,11 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
         }.register(this)
     }
 
-    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
+    override fun onError(problems: MessageProblems, context: MessageContext) {
         sikkerLog.error("forstår ikke behov:\n${problems.toExtendedReport()}")
     }
 
-    override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+    override fun onPacket(packet: JsonMessage, context: MessageContext) {
         loggBehov(log, packet)
         loggBehov(sikkerLog, packet)
 
@@ -45,7 +45,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
             resultat.second["@besvart"] = LocalDateTime.now().toString()
             loggLøstBehov(log, resultat.second)
             loggLøstBehov(sikkerLog, resultat.second)
-            resultat.first.send(resultat.second.toJson())
+            resultat.first.publish(resultat.second.toJson())
             behovUtenLøsning.remove(id)
         } else {
             fjernGamleBehovUtenSvar(context)
@@ -53,7 +53,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
         }
     }
 
-    private fun fjernGamleBehovUtenSvar(context: RapidsConnection.MessageContext) {
+    private fun fjernGamleBehovUtenSvar(context: MessageContext) {
         val grense = LocalDateTime.now().minusMinutes(30)
         behovUtenLøsning
             .filterValues { (_, packet) -> packet["@opprettet"].asLocalDateTime().isBefore(grense) }
@@ -67,7 +67,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
                 behovUtenLøsning.remove(key)
 
                 val behovId = value.second["@id"].asText()
-                context.send(behovId, JsonMessage.newMessage(mapOf(
+                context.publish(behovId, JsonMessage.newMessage(mapOf(
                     "@event_name" to "behov_uten_fullstendig_løsning",
                     "@id" to UUID.randomUUID(),
                     "@opprettet" to LocalDateTime.now(),
