@@ -137,6 +137,7 @@ internal class BehovsakkumulatorTest {
 
         override fun publish(message: String) {}
         override fun publish(key: String, message: String) {}
+        override fun rapidName(): String = "test"
         override fun start() {}
         override fun stop() {}
 
@@ -148,6 +149,8 @@ internal class BehovsakkumulatorTest {
             override fun publish(key: String, message: String) {
                 sentMessages.add(key to objectMapper.readTree(message))
             }
+
+            override fun rapidName(): String = "test"
         }
     }
 }
