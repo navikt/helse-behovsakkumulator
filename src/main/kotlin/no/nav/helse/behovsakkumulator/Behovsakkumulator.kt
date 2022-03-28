@@ -142,5 +142,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
     }
 
     private fun JsonMessage.behovId() =
-        this["@behovId"].takeUnless { it.isMissingOrNull() }?.asText() ?: this["@id"].asText()
+        this["@behovId"].takeUnless { it.isMissingOrNull() }?.asText() ?: this["@id"].asText().also {
+            log.info("akkumulerer behov basert på gammel metode vha @id")
+        }
 }
