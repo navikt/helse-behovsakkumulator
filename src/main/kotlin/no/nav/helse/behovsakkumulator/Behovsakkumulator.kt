@@ -39,7 +39,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
         loggBehov(sikkerLog, packet)
 
         val id = packet.behovId()
-        val resultat = behovUtenLøsning[id]?.also { it.second.kombinerLøsninger(packet) } ?: (context to packet)
+        val resultat = behovUtenLøsning[id]?.let { context to it.second.kombinerLøsninger(packet) } ?: (context to packet)
 
         if (resultat.second.erKomplett()) {
             resultat.second["@final"] = true
@@ -90,13 +90,14 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
         return behov.all { it in løsninger }
     }
 
-    private fun JsonMessage.kombinerLøsninger(packet: JsonMessage) {
+    private fun JsonMessage.kombinerLøsninger(packet: JsonMessage): JsonMessage {
         val løsning = this["@løsning"] as ObjectNode
         packet["@løsning"].fields().forEach { (behovtype, delløsning) ->
             løsning.set<JsonNode>(behovtype, delløsning)
         }
         loggKombinering(log, this)
         loggKombinering(sikkerLog, this)
+        return this
     }
 
     private fun loggLøstBehov(logger: Logger, løsning: JsonMessage) {

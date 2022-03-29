@@ -62,10 +62,12 @@ internal class BehovsakkumulatorTest {
         rapid.sendTestMessage("behovsid1", løsning2)
         rapid.sendTestMessage("behovsid1", løsning3)
 
+        val idLøsning3 = objectMapper.readTree(løsning3).path("@id").asText()
         assertEquals(1, rapid.sentMessages.size)
         val løsninger = rapid.sentMessages.first().second["@løsning"].fields().asSequence().toList()
         val løsningTyper = løsninger.map { it.key }
         assertTrue(løsningTyper.containsAll(listOf("Foreldrepenger", "AndreYtelser", "Sykepengehistorikk")))
+        assertEquals(idLøsning3, rapid.sentMessages.last().second.path("@forårsaket_av").path("id").asText())
     }
 
     @Test
@@ -127,7 +129,10 @@ internal class BehovsakkumulatorTest {
     }
 
     private fun JsonNode.medLøsning(løsning: String) =
-        (this.deepCopy() as ObjectNode).set<ObjectNode>("@løsning", objectMapper.readTree(løsning)).toString()
+        (this.deepCopy() as ObjectNode).apply {
+            put("@id", UUID.randomUUID().toString())
+            set<ObjectNode>("@løsning", objectMapper.readTree(løsning))
+        }.toString()
 
     private class TestRapid : RapidsConnection() {
         val sentMessages = mutableListOf<Pair<String, JsonNode>>()
