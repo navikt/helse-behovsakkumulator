@@ -39,18 +39,18 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
         loggBehov(sikkerLog, packet)
 
         val id = packet.behovId()
-        val resultat = behovUtenLøsning[id]?.let { context to it.second.kombinerLøsninger(packet) } ?: (context to packet)
+        val resultat = behovUtenLøsning[id]?.second?.kombinerLøsninger(packet) ?: packet
 
-        if (resultat.second.erKomplett()) {
-            resultat.second["@final"] = true
-            resultat.second["@besvart"] = LocalDateTime.now().toString()
-            loggLøstBehov(log, resultat.second)
-            loggLøstBehov(sikkerLog, resultat.second)
-            resultat.first.publish(resultat.second.toJson())
+        if (resultat.erKomplett()) {
+            resultat["@final"] = true
+            resultat["@besvart"] = LocalDateTime.now().toString()
+            loggLøstBehov(log, resultat)
+            loggLøstBehov(sikkerLog, resultat)
+            context.publish(resultat.toJson())
             behovUtenLøsning.remove(id)
         } else {
             fjernGamleBehovUtenSvar(context)
-            behovUtenLøsning[id] = resultat
+            behovUtenLøsning[id] = context to resultat
         }
     }
 
