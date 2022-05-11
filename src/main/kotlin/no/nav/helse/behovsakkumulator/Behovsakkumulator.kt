@@ -14,7 +14,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
     private val log = LoggerFactory.getLogger(this::class.java)
     private val sikkerLog = LoggerFactory.getLogger("tjenestekall")
 
-    private val behovUtenLøsning = mutableMapOf<String, Pair<MessageContext, JsonMessage>>()
+    private val behovUtenLøsning = mutableMapOf<String, JsonMessage>()
 
     init {
         River(rapidsConnection).apply {
@@ -39,14 +39,14 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
         loggBehov(sikkerLog, packet)
 
         val id = packet.behovId()
-        val resultat = behovUtenLøsning[id]?.let { context to it.second.kombinerLøsninger(packet) } ?: (context to packet)
+        val resultat = behovUtenLøsning[id]?.kombinerLøsninger(packet) ?: packet
 
-        if (resultat.second.erKomplett()) {
-            resultat.second["@final"] = true
-            resultat.second["@besvart"] = LocalDateTime.now().toString()
-            loggLøstBehov(log, resultat.second)
-            loggLøstBehov(sikkerLog, resultat.second)
-            resultat.first.publish(resultat.second.toJson())
+        if (resultat.erKomplett()) {
+            resultat["@final"] = true
+            resultat["@besvart"] = LocalDateTime.now().toString()
+            loggLøstBehov(log, resultat)
+            loggLøstBehov(sikkerLog, resultat)
+            context.publish(resultat.toJson())
             behovUtenLøsning.remove(id)
         } else {
             fjernGamleBehovUtenSvar(context)
@@ -57,27 +57,27 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
     private fun fjernGamleBehovUtenSvar(context: MessageContext) {
         val grense = LocalDateTime.now().minusMinutes(30)
         behovUtenLøsning
-            .filterValues { (_, packet) -> packet["@opprettet"].asLocalDateTime().isBefore(grense) }
-            .forEach { (key, value) ->
-                val forventninger = value.second["@behov"].map(JsonNode::asText)
-                val løsninger = value.second["@løsning"].feltnavn()
+            .filterValues { packet -> packet["@opprettet"].asLocalDateTime().isBefore(grense) }
+            .forEach { (key, packet) ->
+                val forventninger = packet["@behov"].map(JsonNode::asText)
+                val løsninger = packet["@løsning"].feltnavn()
                 val mangler = forventninger.filter { it !in løsninger }
 
-                loggFjerneGammeltBehov(log, value.second, mangler)
-                loggFjerneGammeltBehov(sikkerLog, value.second, mangler)
+                loggFjerneGammeltBehov(log, packet, mangler)
+                loggFjerneGammeltBehov(sikkerLog, packet, mangler)
                 behovUtenLøsning.remove(key)
 
-                val behovId = value.second.behovId()
+                val behovId = packet.behovId()
                 context.publish(behovId, JsonMessage.newMessage(mapOf(
                     "@event_name" to "behov_uten_fullstendig_løsning",
                     "@id" to UUID.randomUUID(),
                     "@opprettet" to LocalDateTime.now(),
                     "behov_id" to behovId,
-                    "behov_opprettet" to value.second["@opprettet"].asLocalDateTime(),
+                    "behov_opprettet" to packet["@opprettet"].asLocalDateTime(),
                     "forventet" to forventninger,
                     "løsninger" to løsninger,
                     "mangler" to mangler,
-                    "ufullstendig_behov" to value.second.toJson()
+                    "ufullstendig_behov" to packet.toJson()
                 )).toJson().also {
                     sikkerLog.info("sender event=behov_uten_fullstendig_løsning:\n\t$it")
                 })

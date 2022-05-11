@@ -9,6 +9,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import no.nav.helse.rapids_rivers.MessageContext
 import no.nav.helse.rapids_rivers.RapidsConnection
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -126,6 +127,43 @@ internal class BehovsakkumulatorTest {
         rapid.sendTestMessage(behovsid1, løsning1)
 
         assertEquals(1, rapid.sentMessages.size)
+    }
+
+    @Test
+    fun `publiserer endelig svar med samme key som siste melding`() {
+        val behov = objectMapper.readTree("""{"@id": "${UUID.randomUUID()}", "@behovId": "en_behovId", "@opprettet": "${LocalDateTime.now()}", "vedtaksperiodeId": "id", "@behov": ["AndreYtelser", "HeltAndreYtelser"]}""")
+        val løsning1 = behov.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
+        val løsning2 = behov.medLøsning("""{ "HeltAndreYtelser": { "felt1": null, "felt2": {}} }""")
+        rapid.sendTestMessage("behov_nøkkel", behov.toString())
+        rapid.sendTestMessage("behov_nøkkel", løsning1)
+        // I virkeligheten skjer det neppe at en løsning kommer på en annen key enn behovet, dette er bare for å vise
+        // hva aktuell oppførsel er
+        val usannsynligKey = "behov_nøkkel_sist"
+        rapid.sendTestMessage(usannsynligKey, løsning2)
+
+        assertEquals(1, rapid.sentMessages.size)
+        val (key, packet) = rapid.sentMessages.first()
+        assertEquals(usannsynligKey, key)
+        assertTrue(packet["@final"].asBoolean())
+    }
+
+    @Test
+    fun `publiserer behov_uten_fullstendig_løsning med en annen key enn mottatt melding`() {
+        val behovId_somIkkeBlirKomplett = "en_behovId"
+        val behov = objectMapper.readTree("""{"@id": "${UUID.randomUUID()}", "@behovId": "$behovId_somIkkeBlirKomplett", "@opprettet": "${LocalDateTime.now().minusMinutes(31)}", "vedtaksperiodeId": "id", "@behov": ["AndreYtelser", "NoenAndreYtelser", "HeltAndreYtelser"]}""")
+        val løsning1 = behov.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
+        val løsningBehov2 =
+            objectMapper.readTree("""{"@id": "${UUID.randomUUID()}", "@behovId": "en_annen_behovId", "@opprettet": "${LocalDateTime.now()}", "vedtaksperiodeId": "id2", "@behov": ["AndreYtelser", "NoenAndreYtelser"]}""")
+                .medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
+        rapid.sendTestMessage("behov_nøkkel", behov.toString())
+        rapid.sendTestMessage("behov_nøkkel", løsning1)
+        rapid.sendTestMessage("behov_nøkkel", løsningBehov2)
+
+        assertEquals(1, rapid.sentMessages.size)
+        val (key, packet) = rapid.sentMessages.first()
+        assertNotEquals("behov_nøkkel", key)
+        assertEquals(behovId_somIkkeBlirKomplett, key)
+        assertEquals("behov_uten_fullstendig_løsning", packet["@event_name"].asText())
     }
 
     private fun JsonNode.medLøsning(løsning: String) =
