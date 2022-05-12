@@ -60,7 +60,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
             .filterValues { (_, packet) -> packet["@opprettet"].asLocalDateTime().isBefore(grense) }
             .forEach { (key, value) ->
                 val forventninger = value.second["@behov"].map(JsonNode::asText)
-                val løsninger = value.second["@løsning"].fieldNames().asSequence().toList()
+                val løsninger = value.second["@løsning"].feltnavn()
                 val mangler = forventninger.filter { it !in løsninger }
 
                 loggFjerneGammeltBehov(log, value.second, mangler)
@@ -85,7 +85,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
     }
 
     private fun JsonMessage.erKomplett(): Boolean {
-        val løsninger = this["@løsning"].fieldNames().asSequence().toList()
+        val løsninger = this["@løsning"].feltnavn()
         val behov = this["@behov"].map(JsonNode::asText)
         return behov.all { it in løsninger }
     }
@@ -110,22 +110,22 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
     }
 
     private fun loggKombinering(logger: Logger, løsningPacket: JsonMessage) {
-        val løsninger = løsningPacket["@løsning"].fieldNames().asSequence().toList()
+        val løsninger = løsningPacket["@løsning"].feltnavn()
         logger.info(
-            "Satt sammen {} for behov {}, {} ({}). Mangler {}. Forventer {}",
-            keyValue("løsninger", løsninger.joinToString()),
+            "Satt sammen {} for behov {}, {} ({}). Status: {}, {}",
+            keyValue("løsninger", løsninger.prettyPrint()),
             keyValue("id", løsningPacket["@id"].asText()),
             keyValue("behovId", løsningPacket.behovId()),
             keyValue("vedtaksperiodeId", løsningPacket["vedtaksperiodeId"].asText("IKKE_SATT")),
-            keyValue("mangler_behov", løsningPacket["@behov"].filter { it.asText() !in løsninger }.joinToString(transform = JsonNode::asText)),
-            keyValue("behov", løsningPacket["@behov"].joinToString(transform = JsonNode::asText))
+            keyValue("forespurte_behov", løsningPacket["@behov"].prettyPrint()),
+            keyValue("manglende_behov", løsningPacket["@behov"].filter { it.asText() !in løsninger }.prettyPrint()),
         )
     }
 
     private fun loggBehov(logger: Logger, packet: JsonMessage) {
         logger.info(
             "Mottok {} for behov {}, {} ({})",
-            keyValue("løsninger", packet["@løsning"].fieldNames().asSequence().joinToString()),
+            keyValue("løsninger", packet["@løsning"].feltnavn().prettyPrint()),
             keyValue("id", packet["@id"].asText()),
             keyValue("behovId", packet.behovId()),
             keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asText("IKKE_SATT"))
@@ -138,7 +138,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
             keyValue("id", packet["@id"].asText()),
             keyValue("behovId", packet.behovId()),
             keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asText("IKKE_SATT")),
-            keyValue("behov", mangler.joinToString())
+            keyValue("manglende_behov", mangler.joinToString())
         )
     }
 
@@ -146,4 +146,14 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
         this["@behovId"].takeUnless { it.isMissingOrNull() }?.asText() ?: this["@id"].asText().also {
             log.info("akkumulerer behov basert på gammel metode vha @id")
         }
+
+    private fun JsonNode.feltnavn() = Iterable { fieldNames() }
+
+    @Suppress("UNCHECKED_CAST")
+    private inline fun <reified T> Iterable<T>.prettyPrint() =
+        when (T::class) {
+            JsonNode::class -> (this as Iterable<JsonNode>).map(JsonNode::asText)
+            String::class -> this
+            else -> throw UnsupportedOperationException()
+        }.joinToString(prefix = "[", postfix = "]")
 }
