@@ -33,11 +33,6 @@ spec:
     path: /metrics
   secureLogs:
     enabled: true
-  vault:
-    enabled: true
-    paths:
-      - mountPath: /var/run/secrets/nais.io/service_user
-        kvPath: /serviceuser/data/prod/srvbehovsakkumulat
   env:
     - name: KAFKA_CONSUMER_GROUP_ID
       value: tbd-behovsakkumulator-v1
