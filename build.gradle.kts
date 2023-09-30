@@ -1,9 +1,9 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
-val junitJupiterVersion = "5.8.2"
+val junitJupiterVersion = "5.10.0"
 
 plugins {
-    kotlin("jvm") version "1.6.10"
+    kotlin("jvm") version "1.9.10"
 }
 
 group = "no.nav.helse"
@@ -14,7 +14,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:2022.04.05-08.01.237f724ae572")
+    implementation("com.github.navikt:rapids-and-rivers:2023093008351696055717.ffdec6aede3d")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")
@@ -42,9 +42,8 @@ tasks {
 
         doLast {
             configurations.runtimeClasspath.get().forEach {
-                val file = File("$buildDir/libs/${it.name}")
-                if (!file.exists())
-                    it.copyTo(file)
+                val file = File("${layout.buildDirectory.get()}/libs/${it.name}")
+                if (!file.exists()) it.copyTo(file)
             }
         }
     }
@@ -57,6 +56,6 @@ tasks {
     }
 
     withType<Wrapper> {
-        gradleVersion = "7.4"
+        gradleVersion = "8.3"
     }
 }
