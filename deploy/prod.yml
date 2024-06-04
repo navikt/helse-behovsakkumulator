@@ -17,13 +17,13 @@ spec:
     initialDelay: 5
   resources:
     limits:
-      memory: 4096Mi
+      memory: 8192Mi
     requests:
       cpu: 50m
       memory: 64Mi
   replicas:
-    min: 2
-    max: 6
+    min: 4
+    max: 4
     cpuThresholdPercentage: 500
   kafka:
     pool: nav-prod
