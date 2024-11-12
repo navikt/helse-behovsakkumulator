@@ -1,5 +1,6 @@
 val junitJupiterVersion = "5.11.3"
-
+val rapidsAndRiversVersion = "2024111211071731406062.648687519469"
+val tbdLibsVersion = "2024.11.12-11.09-16cf2599"
 plugins {
     kotlin("jvm") version "2.0.21"
 }
@@ -24,7 +25,9 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:2024020507581707116327.1c34df474331")
+    implementation("com.github.navikt:rapids-and-rivers:$rapidsAndRiversVersion")
+
+    testImplementation("com.github.navikt.tbd-libs:rapids-and-rivers-test:$tbdLibsVersion")
 
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

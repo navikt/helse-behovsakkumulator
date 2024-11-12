@@ -6,8 +6,7 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import no.nav.helse.rapids_rivers.MessageContext
-import no.nav.helse.rapids_rivers.RapidsConnection
+import com.github.navikt.tbd_libs.rapids_and_rivers.test_support.TestRapid
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -38,14 +37,14 @@ internal class BehovsakkumulatorTest {
     fun `frittstående svar blir markert final`() {
         val behov4 = objectMapper.readTree("""{"@id": "${UUID.randomUUID()}", "@behovId": "behovsid5", "@opprettet": "${LocalDateTime.now()}", "vedtaksperiodeId": "id", "@behov": ["AndreYtelser"]}""")
         val løsning4 = behov4.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
-        rapid.sendTestMessage("behovsid5", behov4.toString())
-        rapid.sendTestMessage("behovsid5", løsning4)
+        rapid.sendTestMessage(behov4.toString(), "behovsid5")
+        rapid.sendTestMessage(løsning4, "behovsid5")
 
-        assertEquals(1, rapid.sentMessages.size)
-        assertEquals("behovsid5", rapid.sentMessages.first().first)
-        assertTrue(rapid.sentMessages.first().second["@final"].asBoolean())
-        assertDoesNotThrow { LocalDateTime.parse(rapid.sentMessages.first().second["@besvart"].asText()) }
-        val løsninger = rapid.sentMessages.first().second["@løsning"].fields().asSequence().toList()
+        assertEquals(1, rapid.inspektør.size)
+        assertEquals("behovsid5", rapid.inspektør.key(0))
+        assertTrue(rapid.inspektør.field(0, "@final").asBoolean())
+        assertDoesNotThrow { LocalDateTime.parse(rapid.inspektør.field(0, "@besvart").asText()) }
+        val løsninger = rapid.inspektør.field(0, "@løsning").fields().asSequence().toList()
         val løsningTyper = løsninger.map { it.key }
         assertTrue(løsningTyper.containsAll(listOf("AndreYtelser")))
         assertEquals(1, løsningTyper.size)
@@ -58,17 +57,17 @@ internal class BehovsakkumulatorTest {
         val løsning1 = behov1.medLøsning("""{ "Sykepengehistorikk": [] }""")
         val løsning2 = behov1.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
         val løsning3 = behov1.medLøsning("""{ "Foreldrepenger": {} }""")
-        rapid.sendTestMessage("behovsid1", behov1.toString())
-        rapid.sendTestMessage("behovsid1", løsning1)
-        rapid.sendTestMessage("behovsid1", løsning2)
-        rapid.sendTestMessage("behovsid1", løsning3)
+        rapid.sendTestMessage(behov1.toString(), "behovsid1")
+        rapid.sendTestMessage(løsning1, "behovsid1")
+        rapid.sendTestMessage(løsning2, "behovsid1")
+        rapid.sendTestMessage(løsning3, "behovsid1")
 
         val idLøsning3 = objectMapper.readTree(løsning3).path("@id").asText()
-        assertEquals(1, rapid.sentMessages.size)
-        val løsninger = rapid.sentMessages.first().second["@løsning"].fields().asSequence().toList()
+        assertEquals(1, rapid.inspektør.size)
+        val løsninger = rapid.inspektør.field(0, "@løsning").fields().asSequence().toList()
         val løsningTyper = løsninger.map { it.key }
         assertTrue(løsningTyper.containsAll(listOf("Foreldrepenger", "AndreYtelser", "Sykepengehistorikk")))
-        assertEquals(idLøsning3, rapid.sentMessages.last().second.path("@forårsaket_av").path("id").asText())
+        assertEquals(idLøsning3, rapid.inspektør.field(rapid.inspektør.size - 1, "@forårsaket_av").path("id").asText())
     }
 
     @Test
@@ -83,16 +82,16 @@ internal class BehovsakkumulatorTest {
         val løsning1ForBehov3 = behov3.medLøsning("""{ "Sykepengehistorikk": [] }""")
         val løsning2ForBehov3 = behov3.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
         val løsning3ForBehov3 = behov3.medLøsning("""{ "Foreldrepenger": {} }""")
-        rapid.sendTestMessage("behovsid2", behov2.toString())
-        rapid.sendTestMessage("behovsid3", behov3.toString())
-        rapid.sendTestMessage("behovsid2", løsning1ForBehov2)
-        rapid.sendTestMessage("behovsid3", løsning2ForBehov3)
-        rapid.sendTestMessage("behovsid2", løsning2ForBehov2)
-        rapid.sendTestMessage("behovsid3", løsning1ForBehov3)
-        rapid.sendTestMessage("behovsid3", løsning3ForBehov3)
+        rapid.sendTestMessage(behov2.toString(), "behovsid2")
+        rapid.sendTestMessage(behov3.toString(), "behovsid3")
+        rapid.sendTestMessage(løsning1ForBehov2, "behovsid2")
+        rapid.sendTestMessage(løsning2ForBehov3, "behovsid3")
+        rapid.sendTestMessage(løsning2ForBehov2, "behovsid2")
+        rapid.sendTestMessage(løsning1ForBehov3, "behovsid3")
+        rapid.sendTestMessage(løsning3ForBehov3, "behovsid3")
 
-        assertEquals(1, rapid.sentMessages.size)
-        val record = rapid.sentMessages.first().second
+        assertEquals(1, rapid.inspektør.size)
+        val record = rapid.inspektør.message(0)
         val løsninger = record["@løsning"].fields().asSequence().toList()
         val løsningTyper = løsninger.map { it.key }
         assertTrue(løsningTyper.containsAll(listOf("Foreldrepenger", "AndreYtelser", "Sykepengehistorikk")))
@@ -122,11 +121,11 @@ internal class BehovsakkumulatorTest {
                 "@løsning": { "Foreldrepenger": [] }
             }""".trimMargin()
 
-        rapid.sendTestMessage(behovsid0, "THIS IS INVALID JSON")
-        rapid.sendTestMessage(behovsid1, behov1)
-        rapid.sendTestMessage(behovsid1, løsning1)
+        rapid.sendTestMessage("THIS IS INVALID JSON", behovsid0)
+        rapid.sendTestMessage(behov1, behovsid1)
+        rapid.sendTestMessage(løsning1, behovsid1)
 
-        assertEquals(1, rapid.sentMessages.size)
+        assertEquals(1, rapid.inspektør.size)
     }
 
     @Test
@@ -134,17 +133,16 @@ internal class BehovsakkumulatorTest {
         val behov = objectMapper.readTree("""{"@id": "${UUID.randomUUID()}", "@behovId": "en_behovId", "@opprettet": "${LocalDateTime.now()}", "vedtaksperiodeId": "id", "@behov": ["AndreYtelser", "HeltAndreYtelser"]}""")
         val løsning1 = behov.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
         val løsning2 = behov.medLøsning("""{ "HeltAndreYtelser": { "felt1": null, "felt2": {}} }""")
-        rapid.sendTestMessage("behov_nøkkel", behov.toString())
-        rapid.sendTestMessage("behov_nøkkel", løsning1)
+        rapid.sendTestMessage(behov.toString(), "behov_nøkkel")
+        rapid.sendTestMessage(løsning1, "behov_nøkkel")
         // I virkeligheten skjer det neppe at en løsning kommer på en annen key enn behovet, dette er bare for å vise
         // hva aktuell oppførsel er
         val usannsynligKey = "behov_nøkkel_sist"
-        rapid.sendTestMessage(usannsynligKey, løsning2)
+        rapid.sendTestMessage(løsning2, usannsynligKey)
 
-        assertEquals(1, rapid.sentMessages.size)
-        val (key, packet) = rapid.sentMessages.first()
-        assertEquals(usannsynligKey, key)
-        assertTrue(packet["@final"].asBoolean())
+        assertEquals(1, rapid.inspektør.size)
+        assertEquals(usannsynligKey, rapid.inspektør.key(0))
+        assertTrue(rapid.inspektør.field(0, "@final").asBoolean())
     }
 
     @Test
@@ -155,15 +153,14 @@ internal class BehovsakkumulatorTest {
         val løsningBehov2 =
             objectMapper.readTree("""{"@id": "${UUID.randomUUID()}", "@behovId": "en_annen_behovId", "@opprettet": "${LocalDateTime.now()}", "vedtaksperiodeId": "id2", "@behov": ["AndreYtelser", "NoenAndreYtelser"]}""")
                 .medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
-        rapid.sendTestMessage("behov_nøkkel", behov.toString())
-        rapid.sendTestMessage("behov_nøkkel", løsning1)
-        rapid.sendTestMessage("behov_nøkkel", løsningBehov2)
+        rapid.sendTestMessage(behov.toString(), "behov_nøkkel")
+        rapid.sendTestMessage(løsning1, "behov_nøkkel")
+        rapid.sendTestMessage(løsningBehov2, "behov_nøkkel")
 
-        assertEquals(1, rapid.sentMessages.size)
-        val (key, packet) = rapid.sentMessages.first()
-        assertNotEquals("behov_nøkkel", key)
-        assertEquals(behovId_somIkkeBlirKomplett, key)
-        assertEquals("behov_uten_fullstendig_løsning", packet["@event_name"].asText())
+        assertEquals(1, rapid.inspektør.size)
+        assertNotEquals("behov_nøkkel", rapid.inspektør.key(0))
+        assertEquals(behovId_somIkkeBlirKomplett, rapid.inspektør.key(0))
+        assertEquals("behov_uten_fullstendig_løsning", rapid.inspektør.field(0, "@event_name").asText())
     }
 
     private fun JsonNode.medLøsning(løsning: String) =
@@ -171,31 +168,4 @@ internal class BehovsakkumulatorTest {
             put("@id", UUID.randomUUID().toString())
             set<ObjectNode>("@løsning", objectMapper.readTree(løsning))
         }.toString()
-
-    private class TestRapid : RapidsConnection() {
-        val sentMessages = mutableListOf<Pair<String, JsonNode>>()
-
-        fun sendTestMessage(key: String, message: String) {
-            val context = TestContext(key)
-            notifyMessage(message, context)
-        }
-
-        override fun publish(message: String) {}
-        override fun publish(key: String, message: String) {}
-        override fun rapidName(): String = "test"
-        override fun start() {}
-        override fun stop() {}
-
-        private inner class TestContext(private val originalKey: String) : MessageContext {
-            override fun publish(message: String) {
-                publish(originalKey, message)
-            }
-
-            override fun publish(key: String, message: String) {
-                sentMessages.add(key to objectMapper.readTree(message))
-            }
-
-            override fun rapidName(): String = "test"
-        }
-    }
 }
