@@ -1,8 +1,7 @@
 val junitJupiterVersion = "5.10.2"
-val jvmTarget = 21
 
 plugins {
-    kotlin("jvm") version "1.9.22"
+    kotlin("jvm") version "2.0.21"
 }
 
 group = "no.nav.helse"
@@ -31,13 +30,13 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks {
-    java {
-        toolchain {
-            languageVersion = JavaLanguageVersion.of(jvmTarget)
-        }
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of("21"))
     }
+}
 
+tasks {
     named<Jar>("jar") {
         archiveBaseName.set("app")
 
