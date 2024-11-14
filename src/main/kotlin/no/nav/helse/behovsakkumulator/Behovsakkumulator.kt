@@ -26,10 +26,12 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection) : River.PacketListen
 
     init {
         River(rapidsConnection).apply {
+            precondition {
+                it.requireKey("@behov")
+                it.requireKey("@løsning")
+                it.forbid("@final")
+            }
             validate {
-                it.demandKey("@behov")
-                it.demandKey("@løsning")
-                it.rejectKey("@final")
                 it.requireKey("@id")
                 it.interestedIn("@behovId")
                 it.interestedIn("vedtaksperiodeId")
