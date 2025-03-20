@@ -27,6 +27,10 @@ spec:
     cpuThresholdPercentage: 500
   kafka:
     pool: nav-prod
+  observability:
+    autoInstrumentation:
+      enabled: true
+      runtime: java
   prometheus:
     enabled: true
     path: /metrics
