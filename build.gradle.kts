@@ -2,7 +2,7 @@ val junitJupiterVersion = "5.12.1"
 val rapidsAndRiversVersion = "2025080710011754553680.051be9b54ef9"
 val tbdLibsVersion = "2025.08.07-09.55-15719a86"
 plugins {
-    kotlin("jvm") version "2.2.0"
+    kotlin("jvm") version "2.2.10"
 }
 
 group = "no.nav.helse"
