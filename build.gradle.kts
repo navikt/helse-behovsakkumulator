@@ -1,4 +1,4 @@
-val junitJupiterVersion = "5.12.1"
+val junitJupiterVersion = "6.0.2"
 val rapidsAndRiversVersion = "2026011411051768385145.e8ebad1177b4"
 val tbdLibsVersion = "2025.11.04-10.12-3a167132"
 plugins {
