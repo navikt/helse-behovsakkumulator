@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
 import com.github.navikt.tbd_libs.rapids_and_rivers.River
 import com.github.navikt.tbd_libs.rapids_and_rivers.asLocalDateTime
-import com.github.navikt.tbd_libs.rapids_and_rivers.isMissingOrNull
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageContext
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageMetadata
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageProblems
@@ -82,7 +81,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection, private val reposito
             "Markert behov {}, {} ({}) som final",
             keyValue("id", løsning["@id"].asText()),
             keyValue("behovId", løsning.behovId()),
-            keyValue("vedtaksperiodeId", løsning["vedtaksperiodeId"].asText("IKKE_SATT"))
+            keyValue("vedtaksperiodeId", løsning["vedtaksperiodeId"]?.asText() ?: "IKKE_SATT")
         )
     }
 
@@ -93,7 +92,7 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection, private val reposito
             keyValue("løsninger", løsninger.prettyPrint()),
             keyValue("id", løsningPacket["@id"].asText()),
             keyValue("behovId", løsningPacket.behovId()),
-            keyValue("vedtaksperiodeId", løsningPacket["vedtaksperiodeId"].asText("IKKE_SATT")),
+            keyValue("vedtaksperiodeId", løsningPacket["vedtaksperiodeId"]?.asText() ?: "IKKE_SATT"),
             keyValue("forespurte_behov", løsningPacket["@behov"].prettyPrint()),
             keyValue("manglende_behov", løsningPacket["@behov"].filter { it.asText() !in løsninger }.prettyPrint()),
         )
@@ -105,12 +104,12 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection, private val reposito
             keyValue("løsninger", packet["@løsning"].feltnavn().prettyPrint()),
             keyValue("id", packet["@id"].asText()),
             keyValue("behovId", packet.behovId()),
-            keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asText("IKKE_SATT"))
+            keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"]?.asText() ?: "IKKE_SATT")
         )
     }
 
     private fun JsonNode.behovId() =
-        this["@behovId"].takeUnless { it.isMissingOrNull() }?.asText() ?: this["@id"].asText().also {
+        this["@behovId"]?.asText() ?: this["@id"].asText().also {
             log.info("akkumulerer behov basert på gammel metode vha @id")
         }
 
