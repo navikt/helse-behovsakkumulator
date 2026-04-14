@@ -5,6 +5,9 @@ on:
     branches:
       - main
       - 'dev-**'
+  pull_request:
+    branches:
+      - main
   schedule:
     - cron: '0 4 * * 3'
       timezone: 'Europe/Oslo'
@@ -28,6 +31,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: build docker image
+        if: ${{github.ref_name == 'main' || startsWith(github.ref_name, 'dev-')}}
         uses: nais/docker-build-push@v0
         id: docker-build-push
         with:
