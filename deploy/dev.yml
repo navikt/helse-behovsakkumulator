@@ -26,6 +26,9 @@ spec:
     cpuThresholdPercentage: 90
   kafka:
     pool: nav-dev
+  valkey:
+    - instance: behovsakkumulator
+      access: readwrite
   observability:
     autoInstrumentation:
       enabled: true

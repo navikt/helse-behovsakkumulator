@@ -26,10 +26,12 @@ repositories {
 
 dependencies {
     implementation("com.github.navikt:rapids-and-rivers:$rapidsAndRiversVersion")
+    implementation("io.valkey:valkey-java:5.5.0")
 
     testImplementation("com.github.navikt.tbd-libs:rapids-and-rivers-test:$tbdLibsVersion")
 
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
+    testImplementation("org.testcontainers:testcontainers:2.0.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

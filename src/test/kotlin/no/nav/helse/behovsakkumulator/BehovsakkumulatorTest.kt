@@ -7,6 +7,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.github.navikt.tbd_libs.rapids_and_rivers.test_support.TestRapid
+import io.valkey.DefaultJedisClientConfig
+import java.time.LocalDateTime
+import java.util.*
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -14,8 +18,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertDoesNotThrow
-import java.time.LocalDateTime
-import java.util.*
+import org.junit.jupiter.api.assertNotNull
+import org.junit.jupiter.api.assertNull
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 internal class BehovsakkumulatorTest {
@@ -27,10 +31,24 @@ internal class BehovsakkumulatorTest {
 
     private lateinit var rapid: TestRapid
 
+    private val valkeyTestcontainer = ValkeyContainer().apply { start() }
+
+    @AfterAll
+    fun tearDown() {
+        valkeyTestcontainer.stop()
+    }
+
+    private val repository = ValkeyBehovRepository(
+        host = valkeyTestcontainer.host,
+        port = valkeyTestcontainer.getPort(),
+        jedisClientConfig = DefaultJedisClientConfig.builder().build(),
+    )
+
     @BeforeEach
     fun setup() {
         rapid = TestRapid()
-        Behovsakkumulator(rapid)
+        Behovsakkumulator(rapid, repository)
+        MinuttRiver(rapid, repository)
     }
 
     @Test
@@ -64,6 +82,9 @@ internal class BehovsakkumulatorTest {
 
         val idLøsning3 = objectMapper.readTree(løsning3).path("@id").asText()
         assertEquals(1, rapid.inspektør.size)
+        assertEquals("behovsid1", rapid.inspektør.key(0))
+        assertTrue(rapid.inspektør.field(0, "@final").asBoolean())
+        assertDoesNotThrow { LocalDateTime.parse(rapid.inspektør.field(0, "@besvart").asText()) }
         val løsninger = rapid.inspektør.field(0, "@løsning").fields().asSequence().toList()
         val løsningTyper = løsninger.map { it.key }
         assertTrue(løsningTyper.containsAll(listOf("Foreldrepenger", "AndreYtelser", "Sykepengehistorikk")))
@@ -126,6 +147,13 @@ internal class BehovsakkumulatorTest {
         rapid.sendTestMessage(løsning1, behovsid1)
 
         assertEquals(1, rapid.inspektør.size)
+        assertEquals(behovsid1, rapid.inspektør.key(0))
+        assertTrue(rapid.inspektør.field(0, "@final").asBoolean())
+        assertDoesNotThrow { LocalDateTime.parse(rapid.inspektør.field(0, "@besvart").asText()) }
+        val løsninger = rapid.inspektør.field(0, "@løsning").fields().asSequence().toList()
+        val løsningTyper = løsninger.map { it.key }
+        assertTrue(løsningTyper.containsAll(listOf("Foreldrepenger")))
+        assertEquals(1, løsningTyper.size)
     }
 
     @Test
@@ -150,17 +178,17 @@ internal class BehovsakkumulatorTest {
         val behovId_somIkkeBlirKomplett = "en_behovId"
         val behov = objectMapper.readTree("""{"@id": "${UUID.randomUUID()}", "@behovId": "$behovId_somIkkeBlirKomplett", "@opprettet": "${LocalDateTime.now().minusMinutes(31)}", "vedtaksperiodeId": "id", "@behov": ["AndreYtelser", "NoenAndreYtelser", "HeltAndreYtelser"]}""")
         val løsning1 = behov.medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
-        val løsningBehov2 =
-            objectMapper.readTree("""{"@id": "${UUID.randomUUID()}", "@behovId": "en_annen_behovId", "@opprettet": "${LocalDateTime.now()}", "vedtaksperiodeId": "id2", "@behov": ["AndreYtelser", "NoenAndreYtelser"]}""")
-                .medLøsning("""{ "AndreYtelser": { "felt1": null, "felt2": {}} }""")
         rapid.sendTestMessage(behov.toString(), "behov_nøkkel")
         rapid.sendTestMessage(løsning1, "behov_nøkkel")
-        rapid.sendTestMessage(løsningBehov2, "behov_nøkkel")
+        assertNotNull(repository.hent("en_behovId"))
+
+        rapid.sendTestMessage("""{ "@event_name": "minutt" }""", "behov_nøkkel")
 
         assertEquals(1, rapid.inspektør.size)
         assertNotEquals("behov_nøkkel", rapid.inspektør.key(0))
         assertEquals(behovId_somIkkeBlirKomplett, rapid.inspektør.key(0))
         assertEquals("behov_uten_fullstendig_løsning", rapid.inspektør.field(0, "@event_name").asText())
+        assertNull(repository.hent("en_behovId"))
     }
 
     private fun JsonNode.medLøsning(løsning: String) =
