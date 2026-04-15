@@ -23,6 +23,5 @@ updates:
       timezone: "Europe/Oslo"
     cooldown:
       default-days: 7
-      packages:
-        - dependency-name: "com.github.navikt.tbd-libs:*"
-          days: 0
+      exclude:
+        - "com.github.navikt.tbd-libs:*"
