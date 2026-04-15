@@ -7,6 +7,8 @@ updates:
       prefix: "⬆️ "
     schedule:
       interval: "daily"
+      time: "09:00"
+      timezone: "Europe/Oslo"
     cooldown:
       default-days: 7
 
@@ -17,5 +19,10 @@ updates:
       prefix: "⬆️ "
     schedule:
       interval: "daily"
+      time: "09:00"
+      timezone: "Europe/Oslo"
     cooldown:
       default-days: 7
+      packages:
+        - dependency-name: "com.github.navikt.tbd-libs:*"
+          days: 0
