@@ -21,7 +21,3 @@ updates:
       interval: "daily"
       time: "09:00"
       timezone: "Europe/Oslo"
-    cooldown:
-      default-days: 7
-      exclude:
-        - "com.github.navikt.tbd-libs:*"
