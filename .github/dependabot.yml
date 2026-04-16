@@ -1,4 +1,12 @@
 version: 2
+
+registries:
+  maven-github:
+    type: maven-repository
+    url: https://github-package-registry-mirror.gc.nav.no/cached/maven-release
+    username: POSTMAN
+    password: PAT
+
 updates:
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
@@ -14,8 +22,6 @@ updates:
 
   # Maintain dependencies for gradle
   - package-ecosystem: "gradle"
-    ignore:
-      - dependency-name: "com.github.navikt.tbd-libs:*"
     directory: "/"
     commit-message:
       prefix: "⬆️ "
@@ -25,15 +31,7 @@ updates:
       timezone: "Europe/Oslo"
     cooldown:
       default-days: 7
-
-  # Oppdatering uten cooldown for tbd-libs
-  - package-ecosystem: "gradle"
-    allow:
-      - dependency-name: "com.github.navikt.tbd-libs:*"
-    directory: "/"
-    commit-message:
-      prefix: "⬆️ "
-    schedule:
-      interval: "daily"
-      time: "09:00"
-      timezone: "Europe/Oslo"
+      exclude:
+        - "com.github.navikt.tbd-libs:*"
+    registries:
+      - maven-github
