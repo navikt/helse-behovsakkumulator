@@ -9,7 +9,7 @@ dependencyResolutionManagement {
     repositories {
         if (providers.environmentVariable("GITHUB_ACTIONS").orNull == "true") {
             maven {
-                url = uri("https://maven.pkg.github.com/navikt/maven-release")
+                url = uri("https://github-package-registry-mirror.gc.nav.no/cached/maven-release")
                 credentials {
                     username = "token"
                     password = providers.environmentVariable("GITHUB_TOKEN").orNull!!
