@@ -25,3 +25,15 @@ updates:
       timezone: "Europe/Oslo"
     cooldown:
       default-days: 7
+
+  # Oppdatering uten cooldown for tbd-libs
+  - package-ecosystem: "gradle"
+    allow:
+      - dependency-name: "com.github.navikt.tbd-libs:*"
+    directory: "/"
+    commit-message:
+      prefix: "⬆️ "
+    schedule:
+      interval: "daily"
+      time: "09:00"
+      timezone: "Europe/Oslo"
