@@ -14,6 +14,8 @@ updates:
 
   # Maintain dependencies for gradle
   - package-ecosystem: "gradle"
+    ignore:
+      - dependency-name: "com.github.navikt.tbd-libs:*"
     directory: "/"
     commit-message:
       prefix: "⬆️ "
@@ -21,3 +23,5 @@ updates:
       interval: "daily"
       time: "09:00"
       timezone: "Europe/Oslo"
+    cooldown:
+      default-days: 7
