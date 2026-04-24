@@ -1,6 +1,6 @@
 val junitJupiterVersion = "6.0.3"
 val rapidsAndRiversVersion = "2026021809281771403330.8bdda3e27fff"
-val tbdLibsVersion = "20260416.1520"
+val tbdLibsVersion = "20260423.1246"
 plugins {
     kotlin("jvm") version "2.3.20"
 }
