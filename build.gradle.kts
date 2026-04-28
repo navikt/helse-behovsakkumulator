@@ -14,7 +14,7 @@ dependencies {
     testImplementation("com.github.navikt.tbd-libs:rapids-and-rivers-test:$tbdLibsVersion")
 
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
-    testImplementation("org.testcontainers:testcontainers:2.0.4")
+    testImplementation("org.testcontainers:testcontainers:2.0.5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
