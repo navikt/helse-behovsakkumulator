@@ -21,8 +21,8 @@ spec:
       cpu: 50m
       memory: 64Mi
   replicas:
-    min: 4
-    max: 4
+    min: 2
+    max: 6
     cpuThresholdPercentage: 500
   kafka:
     pool: nav-prod
