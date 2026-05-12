@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - 'dev-**'
   pull_request:
     branches:
       - main
@@ -15,7 +14,7 @@ on:
 
 jobs:
   build:
-    name: build docker image
+    name: Build docker image
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -26,12 +25,12 @@ jobs:
           distribution: 'temurin'
           java-version: '21.x'
           cache: 'gradle'
-      - name: test and build
-        run: ./gradlew test build
+      - name: Test and build
+        run: ./gradlew build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: build docker image
-        if: ${{github.ref_name == 'main' || startsWith(github.ref_name, 'dev-')}}
+      - name: Build container image
+        if: ${{ github.ref_name == 'main' }}
         uses: nais/docker-build-push@v0
         id: docker-build-push
         with:
@@ -40,10 +39,10 @@ jobs:
       image: ${{ steps.docker-build-push.outputs.image }}
 
   deployDev:
-    name: deploy to dev
-    needs: build
+    name: Deploy to dev
+    needs: [build]
     runs-on: ubuntu-latest
-    if: ${{github.ref_name == 'main' || startsWith(github.ref_name, 'dev-')}}
+    if: ${{ github.ref_name == 'main' }}
     permissions:
       id-token: write
     steps:
@@ -55,8 +54,8 @@ jobs:
           IMAGE: ${{ needs.build.outputs.image }}
 
   deployProd:
-    name: deploy to prod
-    needs: build
+    name: Deploy to prod
+    needs: [build]
     runs-on: ubuntu-latest
     if: ${{ github.ref_name == 'main' }}
     permissions:
