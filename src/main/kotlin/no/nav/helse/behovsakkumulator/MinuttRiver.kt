@@ -1,6 +1,5 @@
 package no.nav.helse.behovsakkumulator
 
-import com.fasterxml.jackson.databind.JsonNode
 import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
 import com.github.navikt.tbd_libs.rapids_and_rivers.River
 import com.github.navikt.tbd_libs.rapids_and_rivers.asLocalDateTime
@@ -15,6 +14,7 @@ import java.util.*
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import tools.jackson.databind.JsonNode
 
 class MinuttRiver(rapidsConnection: RapidsConnection, private val repository: BehovRepository) : River.PacketListener {
     private val log = LoggerFactory.getLogger(this::class.java)
@@ -41,7 +41,7 @@ class MinuttRiver(rapidsConnection: RapidsConnection, private val repository: Be
         repository.hentAlle()
             .filterValues { packet -> packet["@opprettet"].asLocalDateTime().isBefore(grense) }
             .forEach { (key, packet) ->
-                val forventninger = packet["@behov"].map(JsonNode::asText)
+                val forventninger = packet["@behov"].toList().map(JsonNode::asString)
                 val løsninger = packet["@løsning"].feltnavn()
                 val mangler = forventninger.filter { it !in løsninger }
 
@@ -72,17 +72,17 @@ class MinuttRiver(rapidsConnection: RapidsConnection, private val repository: Be
     private fun loggFjerneGammeltBehov(logger: Logger, packet: JsonNode, mangler: List<String>) {
         logger.warn(
             "Fjerner behov {}, {} for {}. Mottok aldri løsning(er) for {} innen 30 minutter.",
-            keyValue("id", packet["@id"].asText()),
+            keyValue("id", packet["@id"].asString()),
             keyValue("behovId", packet.behovId()),
-            keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asText("IKKE_SATT")),
+            keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asString("IKKE_SATT")),
             keyValue("manglende_behov", mangler.joinToString())
         )
     }
 
     private fun JsonNode.behovId() =
-        this["@behovId"].takeUnless { it.isMissingOrNull() }?.asText() ?: this["@id"].asText().also {
+        this["@behovId"].takeUnless { it.isMissingOrNull() }?.asString() ?: this["@id"].asString().also {
             log.info("akkumulerer behov basert på gammel metode vha @id")
         }
 
-    private fun JsonNode.feltnavn() = Iterable { fieldNames() }
+    private fun JsonNode.feltnavn() = propertyNames().asIterable()
 }

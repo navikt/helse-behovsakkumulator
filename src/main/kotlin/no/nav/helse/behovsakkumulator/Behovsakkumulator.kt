@@ -1,7 +1,5 @@
 package no.nav.helse.behovsakkumulator
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.ObjectNode
 import com.github.navikt.tbd_libs.rapids_and_rivers.JsonMessage
 import com.github.navikt.tbd_libs.rapids_and_rivers.River
 import com.github.navikt.tbd_libs.rapids_and_rivers.asLocalDateTime
@@ -14,6 +12,8 @@ import java.time.LocalDateTime
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.ObjectNode
 
 class Behovsakkumulator(rapidsConnection: RapidsConnection, private val repository: BehovRepository) : River.PacketListener {
 
@@ -62,14 +62,14 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection, private val reposito
 
     private fun JsonNode.erKomplett(): Boolean {
         val løsninger = this["@løsning"].feltnavn()
-        val behov = this["@behov"].map(JsonNode::asText)
+        val behov = this["@behov"].toList().map(JsonNode::asString)
         return behov.all { it in løsninger }
     }
 
     private fun ObjectNode.kombinerLøsninger(packet: JsonNode): ObjectNode {
         val løsning = this["@løsning"] as ObjectNode
-        packet["@løsning"].fields().forEach { (behovtype, delløsning) ->
-            løsning.set<JsonNode>(behovtype, delløsning)
+        packet["@løsning"].properties().forEach { (behovtype, delløsning) ->
+            løsning.set(behovtype, delløsning)
         }
         loggKombinering(log, this)
         loggKombinering(sikkerLog, this)
@@ -79,9 +79,9 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection, private val reposito
     private fun loggLøstBehov(logger: Logger, løsning: JsonNode) {
         logger.info(
             "Markert behov {}, {} ({}) som final",
-            keyValue("id", løsning["@id"].asText()),
+            keyValue("id", løsning["@id"].asString()),
             keyValue("behovId", løsning.behovId()),
-            keyValue("vedtaksperiodeId", løsning["vedtaksperiodeId"]?.asText() ?: "IKKE_SATT")
+            keyValue("vedtaksperiodeId", løsning["vedtaksperiodeId"]?.asString() ?: "IKKE_SATT")
         )
     }
 
@@ -90,11 +90,11 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection, private val reposito
         logger.info(
             "Satt sammen {} for behov {}, {} ({}). Status: {}, {}",
             keyValue("løsninger", løsninger.prettyPrint()),
-            keyValue("id", løsningPacket["@id"].asText()),
+            keyValue("id", løsningPacket["@id"].asString()),
             keyValue("behovId", løsningPacket.behovId()),
-            keyValue("vedtaksperiodeId", løsningPacket["vedtaksperiodeId"]?.asText() ?: "IKKE_SATT"),
+            keyValue("vedtaksperiodeId", løsningPacket["vedtaksperiodeId"]?.asString() ?: "IKKE_SATT"),
             keyValue("forespurte_behov", løsningPacket["@behov"].prettyPrint()),
-            keyValue("manglende_behov", løsningPacket["@behov"].filter { it.asText() !in løsninger }.prettyPrint()),
+            keyValue("manglende_behov", løsningPacket["@behov"].filter { it.asString() !in løsninger }.prettyPrint()),
         )
     }
 
@@ -102,23 +102,23 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection, private val reposito
         logger.info(
             "Mottok {} for behov {}, {} ({})",
             keyValue("løsninger", packet["@løsning"].feltnavn().prettyPrint()),
-            keyValue("id", packet["@id"].asText()),
+            keyValue("id", packet["@id"].asString()),
             keyValue("behovId", packet.behovId()),
-            keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"]?.asText() ?: "IKKE_SATT")
+            keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"]?.asString() ?: "IKKE_SATT")
         )
     }
 
     private fun JsonNode.behovId() =
-        this["@behovId"]?.asText() ?: this["@id"].asText().also {
+        this["@behovId"]?.asString() ?: this["@id"].asString().also {
             log.info("akkumulerer behov basert på gammel metode vha @id")
         }
 
-    private fun JsonNode.feltnavn() = Iterable { fieldNames() }
+    private fun JsonNode.feltnavn() = propertyNames().asIterable()
 
     @Suppress("UNCHECKED_CAST")
     private inline fun <reified T> Iterable<T>.prettyPrint() =
         when (T::class) {
-            JsonNode::class -> (this as Iterable<JsonNode>).map(JsonNode::asText)
+            JsonNode::class -> (this as Iterable<JsonNode>).map(JsonNode::asString)
             String::class -> this
             else -> throw UnsupportedOperationException()
         }.joinToString(prefix = "[", postfix = "]")

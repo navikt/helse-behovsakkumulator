@@ -1,11 +1,5 @@
 package no.nav.helse.behovsakkumulator
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.databind.node.ObjectNode
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.github.navikt.tbd_libs.rapids_and_rivers.test_support.TestRapid
 import io.valkey.DefaultJedisClientConfig
 import java.time.LocalDateTime
@@ -20,13 +14,14 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.api.assertNull
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.ObjectNode
+import tools.jackson.module.kotlin.jacksonObjectMapper
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 internal class BehovsakkumulatorTest {
     private companion object {
-        private val objectMapper: ObjectMapper = jacksonObjectMapper()
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-            .registerModule(JavaTimeModule())
+        private val objectMapper = jacksonObjectMapper()
     }
 
     private lateinit var rapid: TestRapid
@@ -61,8 +56,8 @@ internal class BehovsakkumulatorTest {
         assertEquals(1, rapid.inspektør.size)
         assertEquals("behovsid5", rapid.inspektør.key(0))
         assertTrue(rapid.inspektør.field(0, "@final").asBoolean())
-        assertDoesNotThrow { LocalDateTime.parse(rapid.inspektør.field(0, "@besvart").asText()) }
-        val løsninger = rapid.inspektør.field(0, "@løsning").fields().asSequence().toList()
+        assertDoesNotThrow { LocalDateTime.parse(rapid.inspektør.field(0, "@besvart").asString()) }
+        val løsninger = rapid.inspektør.field(0, "@løsning").properties().toList()
         val løsningTyper = løsninger.map { it.key }
         assertTrue(løsningTyper.containsAll(listOf("AndreYtelser")))
         assertEquals(1, løsningTyper.size)
@@ -80,15 +75,15 @@ internal class BehovsakkumulatorTest {
         rapid.sendTestMessage(løsning2, "behovsid1")
         rapid.sendTestMessage(løsning3, "behovsid1")
 
-        val idLøsning3 = objectMapper.readTree(løsning3).path("@id").asText()
+        val idLøsning3 = objectMapper.readTree(løsning3).path("@id").asString()
         assertEquals(1, rapid.inspektør.size)
         assertEquals("behovsid1", rapid.inspektør.key(0))
         assertTrue(rapid.inspektør.field(0, "@final").asBoolean())
-        assertDoesNotThrow { LocalDateTime.parse(rapid.inspektør.field(0, "@besvart").asText()) }
-        val løsninger = rapid.inspektør.field(0, "@løsning").fields().asSequence().toList()
+        assertDoesNotThrow { LocalDateTime.parse(rapid.inspektør.field(0, "@besvart").asString()) }
+        val løsninger = rapid.inspektør.field(0, "@løsning").properties().toList()
         val løsningTyper = løsninger.map { it.key }
         assertTrue(løsningTyper.containsAll(listOf("Foreldrepenger", "AndreYtelser", "Sykepengehistorikk")))
-        assertEquals(idLøsning3, rapid.inspektør.field(rapid.inspektør.size - 1, "@forårsaket_av").path("id").asText())
+        assertEquals(idLøsning3, rapid.inspektør.field(rapid.inspektør.size - 1, "@forårsaket_av").path("id").asString())
     }
 
     @Test
@@ -113,10 +108,10 @@ internal class BehovsakkumulatorTest {
 
         assertEquals(1, rapid.inspektør.size)
         val record = rapid.inspektør.message(0)
-        val løsninger = record["@løsning"].fields().asSequence().toList()
+        val løsninger = record["@løsning"].properties().toList()
         val løsningTyper = løsninger.map { it.key }
         assertTrue(løsningTyper.containsAll(listOf("Foreldrepenger", "AndreYtelser", "Sykepengehistorikk")))
-        assertEquals("behovsid3", record["@behovId"].asText())
+        assertEquals("behovsid3", record["@behovId"].asString())
     }
 
     @Test
@@ -149,8 +144,8 @@ internal class BehovsakkumulatorTest {
         assertEquals(1, rapid.inspektør.size)
         assertEquals(behovsid1, rapid.inspektør.key(0))
         assertTrue(rapid.inspektør.field(0, "@final").asBoolean())
-        assertDoesNotThrow { LocalDateTime.parse(rapid.inspektør.field(0, "@besvart").asText()) }
-        val løsninger = rapid.inspektør.field(0, "@løsning").fields().asSequence().toList()
+        assertDoesNotThrow { LocalDateTime.parse(rapid.inspektør.field(0, "@besvart").asString()) }
+        val løsninger = rapid.inspektør.field(0, "@løsning").properties().toList()
         val løsningTyper = løsninger.map { it.key }
         assertTrue(løsningTyper.containsAll(listOf("Foreldrepenger")))
         assertEquals(1, løsningTyper.size)
@@ -187,13 +182,13 @@ internal class BehovsakkumulatorTest {
         assertEquals(1, rapid.inspektør.size)
         assertNotEquals("behov_nøkkel", rapid.inspektør.key(0))
         assertEquals(behovId_somIkkeBlirKomplett, rapid.inspektør.key(0))
-        assertEquals("behov_uten_fullstendig_løsning", rapid.inspektør.field(0, "@event_name").asText())
+        assertEquals("behov_uten_fullstendig_løsning", rapid.inspektør.field(0, "@event_name").asString())
         assertNull(repository.hent("en_behovId"))
     }
 
     private fun JsonNode.medLøsning(løsning: String) =
         (this.deepCopy() as ObjectNode).apply {
             put("@id", UUID.randomUUID().toString())
-            set<ObjectNode>("@løsning", objectMapper.readTree(løsning))
+            set("@løsning", objectMapper.readTree(løsning))
         }.toString()
 }

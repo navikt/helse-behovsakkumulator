@@ -1,11 +1,11 @@
 package no.nav.helse.behovsakkumulator
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.ObjectNode
 import io.valkey.HostAndPort
 import io.valkey.JedisClientConfig
 import io.valkey.JedisPooled
 import io.valkey.params.ScanParams
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.ObjectNode
 
 interface BehovRepository {
     fun hent(id: String): ObjectNode?

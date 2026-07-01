@@ -1,17 +1,16 @@
 val junitJupiterVersion = "6.1.0"
-val rapidsAndRiversVersion = "2026042008201776666058"
+val rapidsAndRiversVersion = "2026051812441779101082"
 val tbdLibsVersion = "20260630.1732"
+
 plugins {
     kotlin("jvm") version "2.4.0"
 }
-
-group = "no.nav.helse"
 
 dependencies {
     implementation("com.github.navikt:rapids-and-rivers:$rapidsAndRiversVersion")
     implementation("io.valkey:valkey-java:5.5.0")
 
-    testImplementation("com.github.navikt.tbd-libs:rapids-and-rivers-test:$tbdLibsVersion")
+    testImplementation("com.github.navikt.rapids-and-rivers:rapids-and-rivers-test:$rapidsAndRiversVersion")
 
     testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
     testImplementation("org.testcontainers:testcontainers:2.0.5")
