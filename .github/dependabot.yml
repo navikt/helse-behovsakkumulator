@@ -4,7 +4,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     commit-message:
-      prefix: "⬆️ "
+      prefix: "⬆ "
     schedule:
       interval: "daily"
       time: "09:00"
@@ -16,7 +16,7 @@ updates:
   - package-ecosystem: "gradle"
     directory: "/"
     commit-message:
-      prefix: "⬆️ "
+      prefix: "⬆ "
     schedule:
       interval: "daily"
       time: "09:00"
