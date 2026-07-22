@@ -3,7 +3,7 @@ val rapidsAndRiversVersion = "2026051812441779101082"
 val tbdLibsVersion = "20260630.1732"
 
 plugins {
-    kotlin("jvm") version "2.4.0"
+    kotlin("jvm") version "2.4.10"
 }
 
 dependencies {
