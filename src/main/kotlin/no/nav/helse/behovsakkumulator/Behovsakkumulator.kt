@@ -8,39 +8,51 @@ import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageMetadata
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageProblems
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
 import io.micrometer.core.instrument.MeterRegistry
-import java.time.LocalDateTime
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.node.ObjectNode
+import java.time.LocalDateTime
 
-class Behovsakkumulator(rapidsConnection: RapidsConnection, private val repository: BehovRepository) : River.PacketListener {
-
+class Behovsakkumulator(
+    rapidsConnection: RapidsConnection,
+    private val repository: BehovRepository,
+) : River.PacketListener {
     private val log = LoggerFactory.getLogger(this::class.java)
     private val sikkerLog = LoggerFactory.getLogger("tjenestekall")
 
     init {
-        River(rapidsConnection).apply {
-            precondition {
-                it.requireKey("@behov")
-                it.requireKey("@løsning")
-                it.forbid("@final")
-            }
-            validate {
-                it.requireKey("@id")
-                it.interestedIn("@behovId")
-                it.interestedIn("vedtaksperiodeId")
-                it.require("@opprettet", JsonNode::asLocalDateTime)
-            }
-        }.register(this)
+        River(rapidsConnection)
+            .apply {
+                precondition {
+                    it.requireKey("@behov")
+                    it.requireKey("@løsning")
+                    it.forbid("@final")
+                }
+                validate {
+                    it.requireKey("@id")
+                    it.interestedIn("@behovId")
+                    it.interestedIn("vedtaksperiodeId")
+                    it.require("@opprettet", JsonNode::asLocalDateTime)
+                }
+            }.register(this)
     }
 
-    override fun onError(problems: MessageProblems, context: MessageContext, metadata: MessageMetadata) {
+    override fun onError(
+        problems: MessageProblems,
+        context: MessageContext,
+        metadata: MessageMetadata,
+    ) {
         sikkerLog.error("forstår ikke behov:\n${problems.toExtendedReport()}")
     }
 
-    override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
+    override fun onPacket(
+        packet: JsonMessage,
+        context: MessageContext,
+        metadata: MessageMetadata,
+        meterRegistry: MeterRegistry,
+    ) {
         val packetAsJson = objectMapper.readTree(packet.toJson()) as ObjectNode
         loggBehov(log, packetAsJson)
         loggBehov(sikkerLog, packetAsJson)
@@ -76,16 +88,22 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection, private val reposito
         return this
     }
 
-    private fun loggLøstBehov(logger: Logger, løsning: JsonNode) {
+    private fun loggLøstBehov(
+        logger: Logger,
+        løsning: JsonNode,
+    ) {
         logger.info(
             "Markert behov {}, {} ({}) som final",
             keyValue("id", løsning["@id"].asString()),
             keyValue("behovId", løsning.behovId()),
-            keyValue("vedtaksperiodeId", løsning["vedtaksperiodeId"]?.asString() ?: "IKKE_SATT")
+            keyValue("vedtaksperiodeId", løsning["vedtaksperiodeId"]?.asString() ?: "IKKE_SATT"),
         )
     }
 
-    private fun loggKombinering(logger: Logger, løsningPacket: JsonNode) {
+    private fun loggKombinering(
+        logger: Logger,
+        løsningPacket: JsonNode,
+    ) {
         val løsninger = løsningPacket["@løsning"].feltnavn()
         logger.info(
             "Satt sammen {} for behov {}, {} ({}). Status: {}, {}",
@@ -98,13 +116,16 @@ class Behovsakkumulator(rapidsConnection: RapidsConnection, private val reposito
         )
     }
 
-    private fun loggBehov(logger: Logger, packet: JsonNode) {
+    private fun loggBehov(
+        logger: Logger,
+        packet: JsonNode,
+    ) {
         logger.info(
             "Mottok {} for behov {}, {} ({})",
             keyValue("løsninger", packet["@løsning"].feltnavn().prettyPrint()),
             keyValue("id", packet["@id"].asString()),
             keyValue("behovId", packet.behovId()),
-            keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"]?.asString() ?: "IKKE_SATT")
+            keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"]?.asString() ?: "IKKE_SATT"),
         )
     }
 

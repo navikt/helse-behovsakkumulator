@@ -1,0 +1,15 @@
+[versions]
+sasGradlePlugins = "20260807.0944"
+rapidsAndRivers = "2026071513121784113927"
+
+[libraries]
+rapidsAndRivers = { module = "com.github.navikt:rapids-and-rivers", version.ref = "rapidsAndRivers" }
+valkey = "io.valkey:valkey-java:5.5.0"
+
+rapidsAndRiversTest = { module = "com.github.navikt.rapids-and-rivers:rapids-and-rivers-test", version.ref = "rapidsAndRivers" }
+
+testcontainers = "org.testcontainers:testcontainers:2.0.5"
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+
+[plugins]
+sas-deployable = { id = "no.nav.helse.sas.sas-deployable", version.ref = "sasGradlePlugins" }

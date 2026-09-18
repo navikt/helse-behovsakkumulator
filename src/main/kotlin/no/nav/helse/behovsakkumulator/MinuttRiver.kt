@@ -9,36 +9,50 @@ import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageMetadata
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageProblems
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
 import io.micrometer.core.instrument.MeterRegistry
-import java.time.LocalDateTime
-import java.util.*
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import tools.jackson.databind.JsonNode
+import java.time.LocalDateTime
+import java.util.*
 
-class MinuttRiver(rapidsConnection: RapidsConnection, private val repository: BehovRepository) : River.PacketListener {
+class MinuttRiver(
+    rapidsConnection: RapidsConnection,
+    private val repository: BehovRepository,
+) : River.PacketListener {
     private val log = LoggerFactory.getLogger(this::class.java)
     private val sikkerLog = LoggerFactory.getLogger("tjenestekall")
 
     init {
-        River(rapidsConnection).apply {
-            precondition {
-                it.requireValue("@event_name", "minutt")
-            }
-        }.register(this)
+        River(rapidsConnection)
+            .apply {
+                precondition {
+                    it.requireValue("@event_name", "minutt")
+                }
+            }.register(this)
     }
 
-    override fun onError(problems: MessageProblems, context: MessageContext, metadata: MessageMetadata) {
+    override fun onError(
+        problems: MessageProblems,
+        context: MessageContext,
+        metadata: MessageMetadata,
+    ) {
         sikkerLog.error("forstår ikke minutt-melding:\n${problems.toExtendedReport()}")
     }
 
-    override fun onPacket(packet: JsonMessage, context: MessageContext, metadata: MessageMetadata, meterRegistry: MeterRegistry) {
+    override fun onPacket(
+        packet: JsonMessage,
+        context: MessageContext,
+        metadata: MessageMetadata,
+        meterRegistry: MeterRegistry,
+    ) {
         fjernGamleBehovUtenSvar(context)
     }
 
     private fun fjernGamleBehovUtenSvar(context: MessageContext) {
         val grense = LocalDateTime.now().minusMinutes(30)
-        repository.hentAlle()
+        repository
+            .hentAlle()
             .filterValues { packet -> packet["@opprettet"].asLocalDateTime().isBefore(grense) }
             .forEach { (key, packet) ->
                 val forventninger = packet["@behov"].toList().map(JsonNode::asString)
@@ -51,31 +65,39 @@ class MinuttRiver(rapidsConnection: RapidsConnection, private val repository: Be
 
                 val behovId = packet.behovId()
                 context.publish(
-                    behovId, JsonMessage.newMessage(
-                    mapOf(
-                        "@event_name" to "behov_uten_fullstendig_løsning",
-                        "@id" to UUID.randomUUID(),
-                        "@opprettet" to LocalDateTime.now(),
-                        "behov_id" to behovId,
-                        "behov_opprettet" to packet["@opprettet"].asLocalDateTime(),
-                        "forventet" to forventninger,
-                        "løsninger" to løsninger,
-                        "mangler" to mangler,
-                        "ufullstendig_behov" to objectMapper.writeValueAsString(packet)
-                    )
-                ).toJson().also {
-                    sikkerLog.info("sender event=behov_uten_fullstendig_løsning:\n\t$it")
-                })
+                    behovId,
+                    JsonMessage
+                        .newMessage(
+                            mapOf(
+                                "@event_name" to "behov_uten_fullstendig_løsning",
+                                "@id" to UUID.randomUUID(),
+                                "@opprettet" to LocalDateTime.now(),
+                                "behov_id" to behovId,
+                                "behov_opprettet" to packet["@opprettet"].asLocalDateTime(),
+                                "forventet" to forventninger,
+                                "løsninger" to løsninger,
+                                "mangler" to mangler,
+                                "ufullstendig_behov" to objectMapper.writeValueAsString(packet),
+                            ),
+                        ).toJson()
+                        .also {
+                            sikkerLog.info("sender event=behov_uten_fullstendig_løsning:\n\t$it")
+                        },
+                )
             }
     }
 
-    private fun loggFjerneGammeltBehov(logger: Logger, packet: JsonNode, mangler: List<String>) {
+    private fun loggFjerneGammeltBehov(
+        logger: Logger,
+        packet: JsonNode,
+        mangler: List<String>,
+    ) {
         logger.warn(
             "Fjerner behov {}, {} for {}. Mottok aldri løsning(er) for {} innen 30 minutter.",
             keyValue("id", packet["@id"].asString()),
             keyValue("behovId", packet.behovId()),
             keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asString("IKKE_SATT")),
-            keyValue("manglende_behov", mangler.joinToString())
+            keyValue("manglende_behov", mangler.joinToString()),
         )
     }
 

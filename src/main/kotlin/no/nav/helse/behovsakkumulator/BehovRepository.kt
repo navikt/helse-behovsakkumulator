@@ -11,8 +11,14 @@ import java.time.Duration
 
 interface BehovRepository {
     fun hent(id: String): ObjectNode?
-    fun lagre(id: String, melding: JsonNode)
+
+    fun lagre(
+        id: String,
+        melding: JsonNode,
+    )
+
     fun fjern(id: String)
+
     fun hentAlle(): Map<String, JsonNode>
 }
 
@@ -21,15 +27,15 @@ class ValkeyBehovRepository(
     port: Int,
     jedisClientConfig: JedisClientConfig,
 ) : BehovRepository {
-
     private companion object {
         const val NØKKEL_PREFIKS = "behov:"
         const val TTL_SEKUNDER = 60L * 60L // 60 minutter
     }
 
-    private val jedis = JedisPooled(
-        HostAndPort(host, port),
-        jedisClientConfig,
+    private val jedis =
+        JedisPooled(
+            HostAndPort(host, port),
+            jedisClientConfig,
         ConnectionPoolConfig().apply {
             maxTotal = 1 // siden appen kjører enkelttrådet
             testWhileIdle = true
@@ -40,10 +46,12 @@ class ValkeyBehovRepository(
 
     private fun nøkkel(id: String) = "$NØKKEL_PREFIKS$id"
 
-    override fun hent(id: String): ObjectNode? =
-        jedis.get(nøkkel(id))?.tilObjectNode()
+    override fun hent(id: String): ObjectNode? = jedis.get(nøkkel(id))?.tilObjectNode()
 
-    override fun lagre(id: String, melding: JsonNode) {
+    override fun lagre(
+        id: String,
+        melding: JsonNode,
+    ) {
         jedis.setex(nøkkel(id), TTL_SEKUNDER, objectMapper.writeValueAsString(melding))
     }
 
