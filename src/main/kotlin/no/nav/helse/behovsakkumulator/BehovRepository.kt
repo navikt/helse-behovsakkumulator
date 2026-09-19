@@ -1,11 +1,13 @@
 package no.nav.helse.behovsakkumulator
 
+import io.valkey.ConnectionPoolConfig
 import io.valkey.HostAndPort
 import io.valkey.JedisClientConfig
 import io.valkey.JedisPooled
 import io.valkey.params.ScanParams
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.node.ObjectNode
+import java.time.Duration
 
 interface BehovRepository {
     fun hent(id: String): ObjectNode?
@@ -28,6 +30,12 @@ class ValkeyBehovRepository(
     private val jedis = JedisPooled(
         HostAndPort(host, port),
         jedisClientConfig,
+        ConnectionPoolConfig().apply {
+            maxTotal = 1 // siden appen kjører enkelttrådet
+            testWhileIdle = true
+            minEvictableIdleDuration = Duration.ofMinutes(3) // Aiven har idle-timeout på 5 minutter
+            timeBetweenEvictionRuns = Duration.ofSeconds(30)
+        },
     )
 
     private fun nøkkel(id: String) = "$NØKKEL_PREFIKS$id"
