@@ -9,9 +9,11 @@ import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageMetadata
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.MessageProblems
 import com.github.navikt.tbd_libs.rapids_and_rivers_api.RapidsConnection
 import io.micrometer.core.instrument.MeterRegistry
-import net.logstash.logback.argument.StructuredArguments.keyValue
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import no.nav.sykepenger.libs.logging.MdcKey
+import no.nav.sykepenger.libs.logging.loggError
+import no.nav.sykepenger.libs.logging.loggInfo
+import no.nav.sykepenger.libs.logging.loggWarn
+import no.nav.sykepenger.libs.logging.medMdc
 import tools.jackson.databind.JsonNode
 import java.time.LocalDateTime
 import java.util.*
@@ -20,9 +22,6 @@ class MinuttRiver(
     rapidsConnection: RapidsConnection,
     private val repository: BehovRepository,
 ) : River.PacketListener {
-    private val log = LoggerFactory.getLogger(this::class.java)
-    private val sikkerLog = LoggerFactory.getLogger("tjenestekall")
-
     init {
         River(rapidsConnection)
             .apply {
@@ -37,7 +36,7 @@ class MinuttRiver(
         context: MessageContext,
         metadata: MessageMetadata,
     ) {
-        sikkerLog.error("forstår ikke minutt-melding:\n${problems.toExtendedReport()}")
+        loggError("Forstår ikke minutt-melding", "problemer" to problems.toExtendedReport())
     }
 
     override fun onPacket(
@@ -58,52 +57,53 @@ class MinuttRiver(
                 val forventninger = packet["@behov"].toList().map(JsonNode::asString)
                 val løsninger = packet["@løsning"].feltnavn()
                 val mangler = forventninger.filter { it !in løsninger }
-
-                loggFjerneGammeltBehov(log, packet, mangler)
-                loggFjerneGammeltBehov(sikkerLog, packet, mangler)
-                repository.fjern(key)
-
                 val behovId = packet.behovId()
-                context.publish(
-                    behovId,
-                    JsonMessage
-                        .newMessage(
-                            mapOf(
-                                "@event_name" to "behov_uten_fullstendig_løsning",
-                                "@id" to UUID.randomUUID(),
-                                "@opprettet" to LocalDateTime.now(),
-                                "behov_id" to behovId,
-                                "behov_opprettet" to packet["@opprettet"].asLocalDateTime(),
-                                "forventet" to forventninger,
-                                "løsninger" to løsninger,
-                                "mangler" to mangler,
-                                "ufullstendig_behov" to objectMapper.writeValueAsString(packet),
-                            ),
-                        ).toJson()
-                        .also {
-                            sikkerLog.info("sender event=behov_uten_fullstendig_løsning:\n\t$it")
-                        },
-                )
-            }
-    }
 
-    private fun loggFjerneGammeltBehov(
-        logger: Logger,
-        packet: JsonNode,
-        mangler: List<String>,
-    ) {
-        logger.warn(
-            "Fjerner behov {}, {} for {}. Mottok aldri løsning(er) for {} innen 30 minutter.",
-            keyValue("id", packet["@id"].asString()),
-            keyValue("behovId", packet.behovId()),
-            keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asString("IKKE_SATT")),
-            keyValue("manglende_behov", mangler.joinToString()),
-        )
+                medMdc(
+                    MdcKey.MELDING_ID to packet["@id"]?.asString(),
+                    MdcKey.VEDTAKSPERIODE_ID to
+                        packet["vedtaksperiodeId"]
+                            .takeUnless { it.isMissingOrNull() }
+                            ?.asString(),
+                ) {
+                    loggWarn(
+                        "Fjerner behov. Mottok aldri løsning(er) innen 30 minutter.",
+                        "behovId" to behovId,
+                        "manglende_behov" to mangler.joinToString(),
+                    )
+                    repository.fjern(key)
+
+                    context.publish(
+                        behovId,
+                        JsonMessage
+                            .newMessage(
+                                mapOf(
+                                    "@event_name" to "behov_uten_fullstendig_løsning",
+                                    "@id" to UUID.randomUUID(),
+                                    "@opprettet" to LocalDateTime.now(),
+                                    "behov_id" to behovId,
+                                    "behov_opprettet" to packet["@opprettet"].asLocalDateTime(),
+                                    "forventet" to forventninger,
+                                    "løsninger" to løsninger,
+                                    "mangler" to mangler,
+                                    "ufullstendig_behov" to objectMapper.writeValueAsString(packet),
+                                ),
+                            ).toJson()
+                            .also {
+                                loggInfo(
+                                    "Sender event=behov_uten_fullstendig_løsning",
+                                    "behovId" to behovId,
+                                    "melding" to it,
+                                )
+                            },
+                    )
+                }
+            }
     }
 
     private fun JsonNode.behovId() =
         this["@behovId"].takeUnless { it.isMissingOrNull() }?.asString() ?: this["@id"].asString().also {
-            log.info("akkumulerer behov basert på gammel metode vha @id")
+            this@MinuttRiver.loggInfo("Akkumulerer behov basert på gammel metode vha @id")
         }
 
     private fun JsonNode.feltnavn() = propertyNames().asIterable()

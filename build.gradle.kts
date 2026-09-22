@@ -9,6 +9,7 @@ sasDeployable {
 dependencies {
     implementation(libs.rapidsAndRivers)
     implementation(libs.valkey)
+    implementation(libs.logging)
 
     testImplementation(libs.rapidsAndRiversTest)
     testImplementation(libs.testcontainers)
