@@ -36,13 +36,13 @@ class ValkeyBehovRepository(
         JedisPooled(
             HostAndPort(host, port),
             jedisClientConfig,
-        ConnectionPoolConfig().apply {
-            maxTotal = 1 // siden appen kjører enkelttrådet
-            testWhileIdle = true
-            minEvictableIdleDuration = Duration.ofMinutes(3) // Aiven har idle-timeout på 5 minutter
-            timeBetweenEvictionRuns = Duration.ofSeconds(30)
-        },
-    )
+            ConnectionPoolConfig().apply {
+                maxTotal = 1 // siden appen kjører enkelttrådet
+                testWhileIdle = true
+                minEvictableIdleDuration = Duration.ofMinutes(3) // Aiven har idle-timeout på 5 minutter
+                timeBetweenEvictionRuns = Duration.ofSeconds(30)
+            },
+        )
 
     private fun nøkkel(id: String) = "$NØKKEL_PREFIKS$id"
 
