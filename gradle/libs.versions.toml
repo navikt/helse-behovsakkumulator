@@ -1,5 +1,5 @@
 [versions]
-sasGradlePlugins = "20260807.0944"
+sykepengerGradlePlugins = "20261001.1657"
 rapidsAndRivers = "2026071513121784113927"
 
 [libraries]
@@ -13,4 +13,4 @@ testcontainers = "org.testcontainers:testcontainers:2.0.5"
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 
 [plugins]
-sas-deployable = { id = "no.nav.helse.sas.sas-deployable", version.ref = "sasGradlePlugins" }
+sykepenger-deployable = { id = "no.nav.sykepenger.deployable", version.ref = "sykepengerGradlePlugins" }
