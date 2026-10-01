@@ -5,7 +5,7 @@ rapidsAndRivers = "2026091610031789545782"
 [libraries]
 rapidsAndRivers = { module = "com.github.navikt:rapids-and-rivers", version.ref = "rapidsAndRivers" }
 valkey = "io.valkey:valkey-java:5.5.0"
-logging = "no.nav.sykepenger.libs:logging:20260829.1737"
+logging = "no.nav.sykepenger.libs:logging:20261001.1823"
 
 rapidsAndRiversTest = { module = "com.github.navikt.rapids-and-rivers:rapids-and-rivers-test", version.ref = "rapidsAndRivers" }
 
