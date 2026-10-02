@@ -61,7 +61,8 @@ class Behovsakkumulator(
                     .takeUnless { it.isMissingOrNull() }
                     ?.asString(),
             MdcKey.VEDTAKSPERIODE_ID to
-                packetAsJson.path("vedtaksperiodeId")
+                packetAsJson
+                    .path("vedtaksperiodeId")
                     .takeUnless { it.isMissingOrNull() }
                     ?.asString(),
         ) {

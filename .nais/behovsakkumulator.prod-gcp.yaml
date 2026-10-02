@@ -1,0 +1,14 @@
+spec:
+  liveness:
+    initialDelay: 5
+  readiness:
+    initialDelay: 5
+  resources:
+    limits:
+      memory: 8192Mi
+  replicas:
+    min: 2
+    max: 6
+    cpuThresholdPercentage: 500
+  kafka:
+    pool: nav-prod
