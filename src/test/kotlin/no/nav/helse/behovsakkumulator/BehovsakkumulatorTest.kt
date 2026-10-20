@@ -206,6 +206,22 @@ internal class BehovsakkumulatorTest {
         assertNull(repository.hent("en_behovId"))
     }
 
+    @Test
+    fun `krasjer ikke om @behovId ikke finnes, dersom @id finnes`() {
+        assertDoesNotThrow {
+            val melding1 = objectMapper.readTree(
+                """
+                {"@event_name":"behov",
+                "@behov":["Medlemskapsvurdering"],"fødselsnummer":"01019012345","Medlemskapsvurdering":
+                {"data":"1"},
+                "@id":"93495007-be45-4567-aaa4-7dc487648ccf","@opprettet":"2026-10-20T15:12:33.982645160",
+                "@løsning":{"Medlemskapsvurdering":{"id":"53f708bf-6921-4884-a382-4e698f748761"}}}
+            """.trimMargin()
+            )
+            rapid.sendTestMessage(melding1.toString(), "01019012345")
+        }
+    }
+
     private fun JsonNode.medLøsning(løsning: String) =
         (this.deepCopy() as ObjectNode)
             .apply {

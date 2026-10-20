@@ -109,7 +109,7 @@ class Behovsakkumulator(
     }
 
     private fun JsonNode.behovId() =
-        this["@behovId"].takeUnless { it.isMissingOrNull() }?.asString() ?: this["@id"].asString().also {
+        this.path("@behovId").takeUnless { it.isMissingOrNull() }?.asString() ?: this["@id"].asString().also {
             this@Behovsakkumulator.loggInfo("Akkumulerer behov basert på gammel metode vha @id")
         }
 
