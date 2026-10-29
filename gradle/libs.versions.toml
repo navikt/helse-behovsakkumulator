@@ -1,11 +1,11 @@
 [versions]
-sykepengerGradlePlugins = "20261028.1441"
+sykepengerGradlePlugins = "20261029.1825"
 rapidsAndRivers = "2026091610031789545782"
 
 [libraries]
 rapidsAndRivers = { module = "com.github.navikt:rapids-and-rivers", version.ref = "rapidsAndRivers" }
 valkey = "io.valkey:valkey-java:5.5.0"
-logging = "no.nav.sykepenger.libs:logging:20261013.1719"
+logging = "no.nav.sykepenger.libs:logging:20261029.1843"
 
 rapidsAndRiversTest = { module = "com.github.navikt.rapids-and-rivers:rapids-and-rivers-test", version.ref = "rapidsAndRivers" }
 
