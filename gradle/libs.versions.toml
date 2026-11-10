@@ -1,6 +1,6 @@
 [versions]
 sykepengerGradlePlugins = "20261029.1945"
-rapidsAndRivers = "2026091610031789545782"
+rapidsAndRivers = "2026110308421793691732"
 
 [libraries]
 rapidsAndRivers = { module = "com.github.navikt:rapids-and-rivers", version.ref = "rapidsAndRivers" }
